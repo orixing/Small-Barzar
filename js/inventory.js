@@ -2395,14 +2395,15 @@ class InventorySystem {
         }
     }
     
-    // 忍者特殊技能：给所有忍者物品增加攻击力
+    // 忍者特殊技能：给所有忍者物品增加攻击力（根据品质等级）
     boostAssassinAttack() {
         // 检查战斗区中的忍者物品
         for (let i = 0; i < this.inventory.length; i++) {
             const item = this.inventory[i];
             if (item && item !== 'occupied' && item.id === 'assassin') {
-                item.meleeBonus = (item.meleeBonus || 0) + 1;
-                console.log(`忍者获得攻击力加成！当前加成: +${item.meleeBonus}`);
+                const qualityBonus = this.getAssassinQualityBonus(item.quality);
+                item.meleeBonus = (item.meleeBonus || 0) + qualityBonus;
+                console.log(`忍者获得攻击力加成！品质${item.quality}级加成+${qualityBonus}，当前总加成: +${item.meleeBonus}`);
             }
         }
         
@@ -2410,8 +2411,9 @@ class InventorySystem {
         for (let i = 0; i < this.backpack.length; i++) {
             const item = this.backpack[i];
             if (item && item !== 'occupied' && item.id === 'assassin') {
-                item.meleeBonus = (item.meleeBonus || 0) + 1;
-                console.log(`背包忍者获得攻击力加成！当前加成: +${item.meleeBonus}`);
+                const qualityBonus = this.getAssassinQualityBonus(item.quality);
+                item.meleeBonus = (item.meleeBonus || 0) + qualityBonus;
+                console.log(`背包忍者获得攻击力加成！品质${item.quality}级加成+${qualityBonus}，当前总加成: +${item.meleeBonus}`);
             }
         }
         
@@ -2421,6 +2423,19 @@ class InventorySystem {
         // 更新显示
         this.updateInventoryDisplay();
         this.updateBackpackDisplay();
+    }
+    
+    // 根据忍者品质等级获取技能加成值
+    getAssassinQualityBonus(quality) {
+        // 品质等级对应的加成：绿+1，蓝+2，紫+4，橙+8，红+16
+        const bonusMap = {
+            1: 1,   // 绿色
+            2: 2,   // 蓝色
+            3: 4,   // 紫色
+            4: 8,   // 橙色
+            5: 16   // 红色
+        };
+        return bonusMap[quality] || 1; // 默认加成为1
     }
     
     // 更新在场忍者单位的攻击力
