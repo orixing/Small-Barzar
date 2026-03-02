@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>大巴扎 - 战争策略</title>
+    <link rel="stylesheet" href="css/style.css">
+    <meta name="theme-color" content="#2c3e50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+    <div id="game-container">
+        <!-- 顶部信息栏 -->
+        <div id="top-info">
+            <!-- 左侧玩家血条 -->
+            <div class="player-info">
+                <div class="base-status">
+                    <div class="base-icon">🏰</div>
+                    <div class="base-health">
+                        <div class="health-bar">
+                            <div id="player-health" class="health-fill"></div>
+                        </div>
+                        <span id="player-health-text">1000/1000</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 中间波次信息 -->
+            <div class="game-info">
+                <div class="wave-info">
+                    <span>第 <span id="current-wave">1</span> 波</span>
+                </div>
+            </div>
+            
+            <!-- 右侧敌方血条 -->
+            <div class="enemy-info">
+                <div class="base-status">
+                    <div class="base-health">
+                        <div class="health-bar">
+                            <div id="enemy-health" class="health-fill enemy"></div>
+                        </div>
+                        <span id="enemy-health-text">1000/1000</span>
+                    </div>
+                    <div class="base-icon">🏛️</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 敌人介绍区域 (仅备战阶段显示) -->
+        <div id="enemy-intro" class="enemy-intro-section">
+            <div class="enemy-intro-content">
+                <h3 id="enemy-intro-title">第 1 波敌军</h3>
+                <div class="enemy-type-display">
+                    <div class="enemy-icon" id="enemy-main-icon">⚔️</div>
+                    <div class="enemy-type-name" id="enemy-type-name">近战兵团</div>
+                </div>
+                <button id="start-battle-btn" class="start-battle-btn">⚔️ 开始战斗</button>
+            </div>
+        </div>
+
+        <!-- 中间横向战场 (仅战斗阶段显示) -->
+        <div id="battlefield" class="hidden">
+            <canvas id="game-canvas" width="800" height="300"></canvas>
+        </div>
+
+        <!-- 下方操作区域 -->
+        <div id="control-area">
+            <!-- 商店区域 -->
+            <div class="shop-section">
+                <div class="shop-header">
+                    <h3>🛍️ 商店</h3>
+                    <button id="refresh-shop" class="refresh-btn">🔄 刷新 (💰1)</button>
+                </div>
+                <div class="shop-items">
+                    <div class="shop-slot" id="shop-item-0">
+                        <div class="shop-item-visual">
+                            <div class="shop-item-icon">⚔️</div>
+                        </div>
+                        <div class="shop-item-price">💰50</div>
+                    </div>
+                    <div class="shop-slot" id="shop-item-1">
+                        <div class="shop-item-visual">
+                            <div class="shop-item-icon">🏹</div>
+                        </div>
+                        <div class="shop-item-price">💰120</div>
+                    </div>
+                    <div class="shop-slot" id="shop-item-2">
+                        <div class="shop-item-visual">
+                            <div class="shop-item-icon">🛡️</div>
+                        </div>
+                        <div class="shop-item-price">💰250</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 战斗区域 -->
+            <div class="inventory-section">
+                <div class="inventory-header">
+                    <h3>⚔️ 战斗区</h3>
+                    <div class="header-controls">
+                        <button id="backpack-btn" class="backpack-btn">🎒 背包</button>
+                        <div class="gold-display">💰 <span id="player-gold">20</span></div>
+                    </div>
+                </div>
+                <div class="inventory-grid">
+                    <div class="inventory-slot" data-slot="0"></div>
+                    <div class="inventory-slot" data-slot="1"></div>
+                    <div class="inventory-slot" data-slot="2"></div>
+                    <div class="inventory-slot" data-slot="3"></div>
+                    <div class="inventory-slot" data-slot="4"></div>
+                    <div class="inventory-slot" data-slot="5"></div>
+                </div>
+            </div>
+
+            <!-- 背包界面 -->
+            <div class="backpack-section hidden">
+                <div class="inventory-header">
+                    <h3>🎒 背包</h3>
+                </div>
+                <div class="inventory-grid">
+                    <div class="inventory-slot" data-backpack-slot="0"></div>
+                    <div class="inventory-slot" data-backpack-slot="1"></div>
+                    <div class="inventory-slot" data-backpack-slot="2"></div>
+                    <div class="inventory-slot" data-backpack-slot="3"></div>
+                    <div class="inventory-slot" data-backpack-slot="4"></div>
+                    <div class="inventory-slot" data-backpack-slot="5"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏结束界面 -->
+    <div id="game-over" class="modal hidden">
+        <div class="modal-content">
+            <h2 id="game-result">游戏结束</h2>
+            <p id="game-result-text">恭喜获胜！</p>
+            <div class="modal-buttons">
+                <button id="restart-game" class="modal-btn primary">重新开始</button>
+                <button id="back-to-menu" class="modal-btn secondary">返回菜单</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 波数显示 -->
+    <div id="wave-display" class="wave-overlay hidden">
+        <div class="wave-content">
+            <h2>第 <span id="wave-number">1</span> 波</h2>
+            <p>敌军来袭！</p>
+        </div>
+    </div>
+
+    <!-- 商店物品信息弹窗 -->
+    <div id="shop-item-info" class="shop-info-popup hidden">
+        <div class="shop-info-content">
+            <div class="shop-info-header">
+                <div class="shop-info-icon" id="shop-info-icon">⚔️</div>
+                <div class="shop-info-title">
+                    <h3 id="shop-info-name">战士</h3>
+                    <div class="shop-info-quality" id="shop-info-quality">普通</div>
+                </div>
+            </div>
+            <div class="shop-info-stats">
+                <div class="stat-item">
+                    <span class="stat-label">生命值:</span>
+                    <span class="stat-value" id="shop-info-health">120</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">攻击力:</span>
+                    <span class="stat-value" id="shop-info-attack">25</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">攻击范围:</span>
+                    <span class="stat-value" id="shop-info-range">30</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">移动速度:</span>
+                    <span class="stat-value" id="shop-info-speed">2.5</span>
+                </div>
+            </div>
+            <div class="shop-info-price">
+                <span>价值: </span>
+                <span id="shop-info-cost">💰50</span>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 游戏脚本 -->
+    <script src="js/utils.js"></script>
+    <script src="js/entities.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/inventory.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
