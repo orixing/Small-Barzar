@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>大巴扎 - 战争策略</title>
     <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap" rel="stylesheet">
     <meta name="theme-color" content="#2c3e50">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -153,6 +154,7 @@
     <!-- 商店物品信息弹窗 -->
     <div id="shop-item-info" class="shop-info-popup hidden">
         <div class="shop-info-content">
+            <div class="attack-type-badge" id="attack-type-badge">近战</div>
             <div class="shop-info-header">
                 <div class="shop-info-icon" id="shop-info-icon">⚔️</div>
                 <div class="shop-info-title">
@@ -161,26 +163,45 @@
                 </div>
             </div>
             <div class="shop-info-stats">
-                <div class="stat-item">
-                    <span class="stat-label">生命值:</span>
-                    <span class="stat-value" id="shop-info-health">120</span>
+                <div class="stat-row">
+                    <div class="stat-item">
+                        <span class="stat-label"><span id="shop-info-attack-emoji" class="attack-emoji">⚔️</span></span>
+                        <span class="stat-value" id="shop-info-attack">25</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">❤️</span>
+                        <span class="stat-value" id="shop-info-health">120</span>
+                    </div>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-label">攻击力:</span>
-                    <span class="stat-value" id="shop-info-attack">25</span>
+                <div class="stat-row">
+                    <div class="stat-item">
+                        <span class="stat-label">⏱️</span>
+                        <span class="stat-value" id="shop-info-cooldown">7秒</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">👥</span>
+                        <span class="stat-value" id="shop-info-count">1</span>
+                    </div>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-label">攻击范围:</span>
-                    <span class="stat-value" id="shop-info-range">30</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">移动速度:</span>
-                    <span class="stat-value" id="shop-info-speed">2.5</span>
+                <div class="stat-row">
+                    <div class="stat-item">
+                        <span class="stat-label">🦶</span>
+                        <span class="stat-value" id="shop-info-speed">2.5</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">对基地伤害:</span>
+                        <span class="stat-value" id="shop-info-base-damage">20</span>
+                    </div>
                 </div>
             </div>
             <div class="shop-info-price">
                 <span>价值: </span>
                 <span id="shop-info-cost">💰50</span>
+            </div>
+            <div id="shop-info-special-skill" class="shop-info-special-skill hidden">
+                <div class="skill-label">特殊技能:</div>
+                <div class="skill-description" id="skill-description">每购买一个近战物品，忍者的攻击+1</div>
+                <div class="skill-status" id="skill-status">当前加成: +0</div>
             </div>
         </div>
     </div>

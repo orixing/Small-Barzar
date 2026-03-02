@@ -13,7 +13,7 @@
 
 html, body {
     height: 100%;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Color Emoji', sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     overflow: hidden;
@@ -996,6 +996,37 @@ html, body {
     max-width: 90vw;
     border: 2px solid #3498db;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    position: relative;
+}
+
+/* 攻击类型标签 */
+.attack-type-badge {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    z-index: 10;
+}
+
+.attack-type-badge.melee {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+.attack-type-badge.ranged {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+}
+
+.attack-type-badge.tank {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+}
+
+.attack-type-badge.mage {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
 }
 
 .shop-info-header {
@@ -1059,11 +1090,19 @@ html, body {
     margin-bottom: 15px;
 }
 
+.stat-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 8px;
+}
+
 .stat-item {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 8px;
-    padding: 4px 0;
+    flex: 1;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
 }
 
 .stat-label {
@@ -1077,10 +1116,61 @@ html, body {
     font-size: 14px;
 }
 
+/* 攻击属性emoji颜色 */
+.attack-emoji {
+    font-size: 16px;
+    filter: hue-rotate(0deg); /* 默认红色 */
+    transition: filter 0.3s ease;
+}
+
+.attack-emoji.melee {
+    filter: hue-rotate(0deg); /* 红色 - 近战 */
+}
+
+.attack-emoji.ranged {
+    filter: hue-rotate(200deg); /* 蓝色 - 远程 */
+}
+
+.attack-emoji.tank {
+    filter: hue-rotate(50deg); /* 黄色 - 坦克 */
+}
+
+.attack-emoji.mage {
+    filter: hue-rotate(280deg); /* 紫色 - 法师 */
+}
+}
+
 .shop-info-price {
     text-align: center;
     font-size: 16px;
     margin-bottom: 0;
+    color: #f39c12;
+    font-weight: bold;
+}
+
+/* 特殊技能显示区域 */
+.shop-info-special-skill {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.skill-label {
+    font-size: 14px;
+    color: #e74c3c;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.skill-description {
+    font-size: 12px;
+    color: #ecf0f1;
+    margin-bottom: 5px;
+    line-height: 1.4;
+}
+
+.skill-status {
+    font-size: 12px;
     color: #f39c12;
     font-weight: bold;
 }

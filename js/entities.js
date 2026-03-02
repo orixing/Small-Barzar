@@ -2,8 +2,9 @@
 
 // 基础单位类
 class Unit {
-    constructor(type, team, x, y) {
+    constructor(type, team, x, y, itemId = null) {
         this.type = type;
+        this.itemId = itemId; // 具体的物品ID，如'warrior', 'assassin'等
         this.team = team; // 'player' or 'enemy'
         this.x = x;
         this.y = y;
@@ -13,6 +14,7 @@ class Unit {
         this.speed = this.getSpeed();
         this.attackPower = this.getAttackPower();
         this.attackRange = this.getAttackRange();
+        this.baseDamage = this.getBaseDamage();
         this.cost = this.getCost();
         this.size = 20;
         this.target = null;
@@ -79,7 +81,65 @@ class Unit {
         return costs[this.type] || 50;
     }
 
+    getBaseDamage() {
+        // 如果有具体的物品ID，使用具体的基地伤害值
+        if (this.itemId) {
+            const specificBaseDamage = {
+                // 近战单位
+                warrior: 20,
+                assassin: 20,
+                gladiator: 20,
+                barbarian: 20,
+                giant: 50,
+                cavalry: 20,
+                militia: 15,
+                
+                // 其他兵种
+                bow: 20,
+                staff: 20,
+                shield: 20
+            };
+            
+            if (specificBaseDamage[this.itemId]) {
+                return specificBaseDamage[this.itemId];
+            }
+        }
+        
+        // 备用方案：按兵种类型
+        const baseDamages = {
+            melee: 20,
+            ranged: 20,
+            tank: 20,
+            mage: 20
+        };
+        return baseDamages[this.type] || 20;
+    }
+
     getIcon() {
+        // 如果有具体的物品ID，使用物品对应的图标
+        if (this.itemId) {
+            const specificIcons = {
+                // 近战单位
+                warrior: '⚔️',
+                assassin: '🥷',
+                gladiator: '🏺', 
+                barbarian: '🪓',
+                giant: '👹',
+                cavalry: '🐎',
+                militia: '👥',
+                
+                // 其他兵种
+                bow: '🏹',
+                staff: '🔮',
+                shield: '🛡️'
+            };
+            
+            if (specificIcons[this.itemId]) {
+                return specificIcons[this.itemId];
+            }
+        }
+        
+        // 备用方案：使用通用类型图标
         const icons = {
             melee: '⚔️',
             ranged: '🏹',
@@ -197,11 +257,17 @@ class Unit {
         Utils.vibrate(50);
     }
 
+    // 计算对基地的实际伤害 = 基地伤害 × 生命百分比
+    calculateBaseDamage() {
+        const healthPercent = this.health / this.maxHealth;
+        return Math.floor(this.baseDamage * healthPercent);
+    }
+
     render(ctx) {
         if (!this.alive) return;
 
         // 绘制单位图标
-        ctx.font = `${this.size}px Arial`;
+        ctx.font = `${this.size}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Color Emoji', Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
@@ -261,7 +327,7 @@ class Base {
         this.team = team;
         this.x = x;
         this.y = y;
-        this.health = this.maxHealth = wave * 200;  // 波数 × 200
+        this.health = this.maxHealth = 100 + 100 * wave;  // 100 + 100 × 波数
         this.size = 50;
         this.alive = true;
         this.wave = wave;  // 记录当前波数
@@ -279,7 +345,7 @@ class Base {
 
     render(ctx) {
         // 绘制基地
-        ctx.font = `${this.size}px Arial`;
+        ctx.font = `${this.size}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Color Emoji', Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         

@@ -217,6 +217,19 @@ class Game {
         }
     }
 
+    spawnPlayerUnitBySpecificType(itemId, unitType) {
+        if (this.gameState === 'playing' && this.gamePhase === 'battle') {
+            const unit = new Unit(unitType, 'player', 
+                70 + Utils.randomInt(-20, 20), 
+                this.canvas.height / 2 + Utils.randomInt(-30, 30),
+                itemId  // 传递具体的物品ID
+            );
+            
+            this.playerUnits.push(unit);
+            Utils.playSound('spawn');
+        }
+    }
+
     spawnEnemyUnit() {
         if (this.gameState !== 'playing' || this.gamePhase !== 'battle') return;
         
@@ -267,7 +280,8 @@ class Game {
             );
             
             if (distanceToEnemyBase < 50) {
-                this.enemyBase.takeDamage(unit.attackPower);
+                const baseDamage = unit.calculateBaseDamage();
+                this.enemyBase.takeDamage(baseDamage);
                 this.renderer.addExplosion(unit.x, unit.y);
                 this.playerUnits.splice(i, 1);
                 continue;
@@ -294,7 +308,8 @@ class Game {
             );
             
             if (distanceToPlayerBase < 50) {
-                this.playerBase.takeDamage(unit.attackPower);
+                const baseDamage = unit.calculateBaseDamage();
+                this.playerBase.takeDamage(baseDamage);
                 this.enemyGold += unit.cost;
                 this.renderer.addExplosion(unit.x, unit.y);
                 this.enemyUnits.splice(i, 1);
@@ -379,7 +394,7 @@ class Game {
         }
         
         // 重置双方基地血量（基于新波数）
-        const newHealth = this.wave * 200;
+        const newHealth = 100 + 100 * this.wave;
         this.playerBase.health = this.playerBase.maxHealth = newHealth;
         this.playerBase.wave = this.wave;
         this.enemyBase.health = this.enemyBase.maxHealth = newHealth;

@@ -38,7 +38,7 @@ class Renderer {
 
     drawDecorations() {
         // 绘制一些装饰性的地形元素
-        this.ctx.font = '20px Arial';
+        this.ctx.font = '20px -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, \'Noto Color Emoji\', Arial';
         this.ctx.textAlign = 'center';
 
         // 每次都重新计算装饰位置，以适应画布大小变化
