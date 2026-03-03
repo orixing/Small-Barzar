@@ -8,6 +8,7 @@ class InventorySystem {
         this.refreshCost = 1;
         this.refreshCooldown = 0;
         this.backpackOpen = false;
+        this.isFirstShopGeneration = true; // 标记是否为第一次生成商店
         
         // 品质系统定义
         this.qualitySystem = {
@@ -39,7 +40,7 @@ class InventorySystem {
                 baseValue: 1,
                 unitType: 'melee',
                 unitCount: 1,
-                cooldown: 420, // 7秒 
+                cooldown: 360, // 6秒 
                 minQuality: 1, // 绿品质起始
                 description: '基础近战战士'
             },
@@ -50,13 +51,13 @@ class InventorySystem {
                 baseValue: 1,
                 unitType: 'melee',
                 unitCount: 1,
-                cooldown: 360, // 6秒
+                cooldown: 300, // 5秒
                 minQuality: 1, // 绿品质起始
                 description: '快速高攻击近战单位'
             },
             gladiator: {
-                name: '角斗士',
-                icon: '🏺',
+                name: '狂战士',
+                icon: '🪓',
                 size: 1,
                 baseValue: 1,
                 unitType: 'melee',
@@ -67,7 +68,7 @@ class InventorySystem {
             },
             barbarian: {
                 name: '野蛮人',
-                icon: '🪓',
+                icon: '👹',
                 size: 1,
                 baseValue: 1,
                 unitType: 'melee',
@@ -80,14 +81,14 @@ class InventorySystem {
             // 中尺寸近战单位 (2x1)
             giant: {
                 name: '巨人',
-                icon: '👹',
+                icon: '💪',
                 size: 2,
                 baseValue: 2,
                 unitType: 'melee',
                 unitCount: 1,
-                cooldown: 600, // 10秒 (暂时给个数值，特殊能力后面再处理)
+                cooldown: 540, // 9秒
                 minQuality: 3, // 紫品质起始
-                description: '强大的巨型战士'
+                description: '抗远程攻击的巨型战士'
             },
             cavalry: {
                 name: '骑兵',
@@ -104,14 +105,38 @@ class InventorySystem {
             // 大尺寸近战单位 (3x1)
             militia: {
                 name: '民兵团',
-                icon: '👥',
+                icon: '👪',
                 size: 3,
                 baseValue: 3,
                 unitType: 'melee',
-                unitCount: 3,
-                cooldown: 660, // 11秒
+                unitCount: 1,
+                cooldown: 600, // 10秒
                 minQuality: 2, // 蓝品质起始
                 description: '多单位的民兵组织'
+            },
+            
+            // 特殊单位
+            swordmaster: {
+                name: '武士',
+                icon: '🥋',
+                size: 1,
+                baseValue: 2,
+                unitType: 'melee',
+                unitCount: 1,
+                cooldown: 540, // 9秒
+                minQuality: 4, // 橙品质起始
+                description: '相邻单位召唤时增强攻击力'
+            },
+            titan: {
+                name: '泰坦',
+                icon: '🗿',
+                size: 3,
+                baseValue: 3,
+                unitType: 'melee',
+                unitCount: 1,
+                cooldown: 1200, // 20秒
+                minQuality: 4, // 橙品质起始
+                description: '近战单位召唤时减少冷却时间'
             },
             
             // === 其他兵种 ===
@@ -148,11 +173,71 @@ class InventorySystem {
                 cooldown: 480, // 8秒
                 minQuality: 1,
                 description: '生产1个坦克兵'
+            },
+            
+            // === 支援物品 ===
+            warBanner: {
+                name: '战旗',
+                icon: '🚩',
+                size: 2,
+                baseValue: 2,
+                unitType: 'melee',
+                unitCount: 0,
+                cooldown: 240, // 4秒
+                minQuality: 3, // 紫色起始
+                description: '全场其他近战物品召唤加速2秒'
+            },
+            
+            magicSword: {
+                name: '宝剑',
+                icon: '🗡️',
+                size: 1,
+                baseValue: 1,
+                unitType: 'melee',
+                unitCount: 0,
+                cooldown: 300, // 5秒
+                minQuality: 2, // 蓝色起始
+                description: '触发时为相邻的近战物品增加10攻击力'
+            },
+            
+            badge: {
+                name: '徽章',
+                icon: '🏅',
+                size: 1,
+                baseValue: 1,
+                unitType: 'melee',
+                unitCount: 0,
+                cooldown: -1, // 被动物品
+                minQuality: 4, // 橙色起始
+                description: '为左侧近战物品减少2秒冷却时间'
             }
         };
         
+        this.preloadEmojis(); // 预加载emoji
         this.init();
     }
+    
+    // 预加载关键emoji
+    preloadEmojis() {
+        // 在DOM中创建隐藏元素预加载emoji
+        const preloader = document.createElement('div');
+        preloader.style.position = 'absolute';
+        preloader.style.left = '-9999px';
+        preloader.style.fontSize = '16px';
+        preloader.style.fontFamily = '"Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji"';
+        
+        const keyEmojis = ['🥷', '🐎', '🏹', '🏅', '⚔️', '🪓', '💪'];
+        preloader.textContent = keyEmojis.join('');
+        
+        document.body.appendChild(preloader);
+        
+        // 1秒后移除预加载元素
+        setTimeout(() => {
+            document.body.removeChild(preloader);
+        }, 1000);
+    }
+    
+    
     
     // 根据基础价值和品质计算实际价值
     calculateItemValue(baseValue, qualityLevel) {
@@ -170,8 +255,13 @@ class InventorySystem {
     }
     
     init() {
-        this.generateShopItems();
+        // 短暂延迟确保emoji预加载完成
+        setTimeout(() => {
+            this.generateShopItems();
+        }, 100);
+        
         this.bindEvents();
+        this.addTestUnits(); // 添加测试单位
     }
     
     bindEvents() {
@@ -198,41 +288,76 @@ class InventorySystem {
     }
     
     generateShopItems() {
-        // 生成3个不重复的随机商店物品
-        const itemKeys = Object.keys(this.itemTemplates);
         this.shopItems = [];
-        const usedItems = new Set(); // 记录已使用的物品
+        const usedItems = new Set();
         
-        // 权重系统：1×1物品更常见
-        const sizeWeights = {
-            1: 0.6, // 60%概率
-            2: 0.3, // 30%概率
-            3: 0.1  // 10%概率
-        };
-        
-        let attempts = 0; // 防止无限循环
-        while (this.shopItems.length < 3 && attempts < 20) {
-            attempts++;
-            const randomSize = this.getWeightedRandomSize(sizeWeights);
-            const sizedItems = itemKeys.filter(key => 
-                this.itemTemplates[key].size === randomSize && !usedItems.has(key)
-            );
+        if (this.isFirstShopGeneration) {
+            // 第一次生成：固定包含忍者、骑兵和弓箭手
+            console.log('第一次生成商店，固定包含忍者、骑兵和弓箭手');
             
-            if (sizedItems.length > 0) {
-                const randomKey = sizedItems[Math.floor(Math.random() * sizedItems.length)];
-                const quality = this.generateQualityForItem(randomKey);
+            // 添加忍者（绿色品质）
+            this.shopItems.push({
+                id: 'assassin',
+                template: this.itemTemplates.assassin,
+                quality: 1, // 绿色品质
+                available: true
+            });
+            usedItems.add('assassin');
+            
+            // 添加骑兵（绿色品质）
+            this.shopItems.push({
+                id: 'cavalry',
+                template: this.itemTemplates.cavalry,
+                quality: 1, // 绿色品质
+                available: true
+            });
+            usedItems.add('cavalry');
+            
+            // 添加弓箭手（绿色品质）
+            this.shopItems.push({
+                id: 'bow',
+                template: this.itemTemplates.bow,
+                quality: 1, // 绿色品质
+                available: true
+            });
+            usedItems.add('bow');
+            
+            this.isFirstShopGeneration = false; // 标记已完成第一次生成
+        } else {
+            // 后续生成：使用原来的随机逻辑
+            const itemKeys = Object.keys(this.itemTemplates);
+            
+            // 权重系统：1×1物品更常见
+            const sizeWeights = {
+                1: 0.6, // 60%概率
+                2: 0.3, // 30%概率
+                3: 0.1  // 10%概率
+            };
+            
+            let attempts = 0; // 防止无限循环
+            while (this.shopItems.length < 3 && attempts < 20) {
+                attempts++;
+                const randomSize = this.getWeightedRandomSize(sizeWeights);
+                const sizedItems = itemKeys.filter(key => 
+                    this.itemTemplates[key].size === randomSize && !usedItems.has(key)
+                );
                 
-                // 如果品质为null，说明该物品不能在当前波数出现，跳过
-                if (quality !== null) {
-                    this.shopItems.push({
-                        id: randomKey,
-                        template: this.itemTemplates[randomKey],
-                        quality: quality,
-                        available: true
-                    });
+                if (sizedItems.length > 0) {
+                    const randomKey = sizedItems[Math.floor(Math.random() * sizedItems.length)];
+                    const quality = this.generateQualityForItem(randomKey);
+                    
+                    // 如果品质为null，说明该物品不能在当前波数出现，跳过
+                    if (quality !== null) {
+                        this.shopItems.push({
+                            id: randomKey,
+                            template: this.itemTemplates[randomKey],
+                            quality: quality,
+                            available: true
+                        });
+                    }
+                    
+                    usedItems.add(randomKey); // 无论是否添加成功都标记为已使用，避免重复尝试
                 }
-                
-                usedItems.add(randomKey); // 无论是否添加成功都标记为已使用，避免重复尝试
             }
         }
         
@@ -393,6 +518,11 @@ class InventorySystem {
             } else {
                 this.updateInventoryDisplay();
             }
+            
+            // 如果是徽章升级，刷新所有徽章效果
+            if (item.id === 'badge') {
+                this.refreshAllBadgeEffects();
+            }
         }
     }
     
@@ -533,10 +663,32 @@ class InventorySystem {
                     id: shopItem.id,
                     template: template,
                     quality: shopItem.quality,
-                    cooldownRemaining: template.cooldown, // 始终从满冷却开始
+                    cooldownRemaining: 0, // 先设为0，后面会更新
                     isReady: false, // 进度条始终为0
-                    meleeBonus: 0 // 忍者特殊技能：近战攻击力加成
+                    attackBonus: 0, // 通用攻击力加成（宝剑等物品会修改这个值）
+                    cooldownReduction: 0, // 冷却时间减少（徽章等物品会修改这个值）
+                    meleeBonus: 0, // 忍者特殊技能：近战攻击力加成
+                    militiaBonus: 0, // 民兵团特殊技能：额外单位计数器
+                    barbarianBonus: 0, // 野蛮人特殊技能：品质攻击力加成
+                    accelerationTime: 0 // 战旗加速剩余时间
                 };
+                
+                // 计算实际的冷却时间（考虑升级效果）
+                const actualCooldown = this.getActualCooldown(item);
+                item.cooldownRemaining = actualCooldown;
+                
+                // 为野蛮人计算品质攻击力加成（相对于起始品质）
+                if (item.id === 'barbarian') {
+                    const qualityLevelsAboveMin = item.quality - template.minQuality;
+                    item.barbarianBonus = qualityLevelsAboveMin * 30; // 每提升一个品质+30攻击力
+                }
+                
+                // 为巨人计算品质生命值加成（相对于起始品质）
+                if (item.id === 'giant') {
+                    const qualityLevelsAboveMin = item.quality - template.minQuality;
+                    item.giantHealthBonus = qualityLevelsAboveMin * 100; // 每提升一个品质+100生命值
+                }
+                
                 
                 // 放入背包
                 this.addItemToInventory(item);
@@ -607,9 +759,15 @@ class InventorySystem {
                 id: shopItem.id,
                 template: template,
                 quality: shopItem.quality,
-                cooldownRemaining: template.cooldown, // 始终从满冷却开始
-                isReady: false // 进度条始终为0
+                cooldownRemaining: 0, // 先设为0，后面会更新
+                isReady: false, // 进度条始终为0
+                attackBonus: 0, // 通用攻击力加成（宝剑等物品会修改这个值）
+                cooldownReduction: 0 // 冷却时间减少（徽章等物品会修改这个值）
             };
+            
+            // 计算实际的冷却时间（考虑升级效果）
+            const actualCooldown = this.getActualCooldown(item);
+            item.cooldownRemaining = actualCooldown;
             
             // 放入指定位置
             this.addItemToInventoryAtSlot(item, targetSlot);
@@ -630,9 +788,15 @@ class InventorySystem {
                     id: shopItem.id,
                     template: template,
                     quality: shopItem.quality,
-                    cooldownRemaining: template.cooldown, // 始终从满冷却开始
-                    isReady: false // 进度条始终为0
+                    cooldownRemaining: 0, // 先设为0，后面会更新
+                    isReady: false, // 进度条始终为0
+                    attackBonus: 0, // 通用攻击力加成（宝剑等物品会修改这个值）
+                    cooldownReduction: 0 // 冷却时间减少（徽章等物品会修改这个值）
                 };
+                
+                // 计算实际的冷却时间（考虑升级效果）
+                const actualCooldown = this.getActualCooldown(item);
+                item.cooldownRemaining = actualCooldown;
                 
                 // 自动找位置放入
                 this.addItemToInventory(item);
@@ -678,6 +842,9 @@ class InventorySystem {
                 break;
             }
         }
+        
+        // 刷新徽章效果
+        this.refreshAllBadgeEffects();
     }
     
     addItemToInventoryAtSlot(item, targetSlot) {
@@ -691,17 +858,35 @@ class InventorySystem {
                 this.inventory[targetSlot + j] = 'occupied'; // 占用标记
             }
         }
+        
+        // 徽章被动效果：放置时为左侧近战物品减少冷却时间
+        if (item.id === 'badge') {
+            this.applyBadgeEffect(targetSlot);
+        }
+        
+        // 如果是近战物品，检查右侧是否有徽章
+        if (item.template.unitType === 'melee') {
+            this.checkRightBadge(targetSlot);
+        }
+        
+        // 刷新所有徽章效果
+        this.refreshAllBadgeEffects();
     }
     
     useItem(slotIndex) {
         const item = this.inventory[slotIndex];
         if (!item || item === 'occupied' || !item.isReady) return;
         
-        // 生产单位
-        this.produceUnits(item);
+        // 宝剑特殊效果：触发时为相邻近战物品增加攻击力
+        if (item.id === 'magicSword') {
+            this.triggerMagicSwordEffect(slotIndex);
+        } else {
+            // 生产单位
+            this.produceUnits(item, slotIndex);
+        }
         
-        // 设置冷却
-        item.cooldownRemaining = item.template.cooldown;
+        // 设置冷却（使用实际的冷却时间）
+        item.cooldownRemaining = this.getActualCooldown(item);
         item.isReady = false;
         
         this.updateInventoryDisplay();
@@ -720,14 +905,61 @@ class InventorySystem {
         }
     }
     
-    produceUnits(item) {
+    produceUnits(item, itemSlot) {
         const template = item.template;
         
-        for (let i = 0; i < template.unitCount; i++) {
+        // 战旗特殊处理：触发全场近战单位加速
+        if (item.id === 'warBanner') {
+            this.triggerWarBannerAcceleration();
+            return;
+        }
+        
+        // 计算实际生产的单位数（基础数量 + 民兵团额外单位）
+        let actualUnitCount = template.unitCount;
+        if (item.id === 'militia') {
+            actualUnitCount += item.militiaBonus || 0;
+        }
+        
+        for (let i = 0; i < actualUnitCount; i++) {
             // 稍微延迟每个单位的生产
             setTimeout(() => {
-                this.game.spawnPlayerUnitBySpecificType(item.id, template.unitType);
+                // 计算各种单位的属性加成
+                let bonusAttack = 0;
+                let bonusHealth = 0;
+                
+                // 通用攻击力加成（宝剑等支援物品提供）
+                bonusAttack += item.attackBonus || 0;
+                
+                if (item.id === 'gladiator') {
+                    bonusAttack += item.gladiatorBonus || 0;
+                } else if (item.id === 'giant') {
+                    bonusHealth = item.giantHealthBonus || 0;
+                } else if (item.id === 'swordmaster') {
+                    bonusAttack += item.swordmasterBonus || 0;
+                }
+                
+                this.game.spawnPlayerUnitBySpecificType(item.id, template.unitType, bonusAttack, bonusHealth);
             }, i * 200); // 0.2秒间隔
+        }
+        
+        // 民兵团特殊技能：生产后增加下次额外单位数
+        if (item.id === 'militia') {
+            item.militiaBonus = (item.militiaBonus || 0) + 1;
+            console.log(`民兵团技能触发！下次将额外生产 ${item.militiaBonus} 个单位`);
+            
+            // 更新显示以反映技能状态
+            this.updateInventoryDisplay();
+            this.updateBackpackDisplay();
+        }
+        
+        // 武士特殊技能：检查相邻位置是否有武士，如果召唤的是近战单位则根据数量增加攻击力
+        if (template.unitType === 'melee') {
+            this.boostAdjacentSwordmasters(itemSlot, actualUnitCount);
+        }
+        
+        // 泰坦特殊技能：如果召唤的是近战单位，为所有泰坦充能1秒
+        if (template.unitType === 'melee' && item.id !== 'titan' && actualUnitCount > 0) {
+            this.chargeTitans();
         }
     }
     
@@ -750,7 +982,7 @@ class InventorySystem {
         for (let i = 0; i < this.inventory.length; i++) {
             const item = this.inventory[i];
             if (item && item !== 'occupied') {
-                item.cooldownRemaining = item.template.cooldown;
+                item.cooldownRemaining = this.getActualCooldown(item);
                 item.isReady = false;
             }
         }
@@ -764,8 +996,14 @@ class InventorySystem {
         for (let i = 0; i < this.inventory.length; i++) {
             const item = this.inventory[i];
             if (item && item !== 'occupied') {
-                item.cooldownRemaining = item.template.cooldown; // 冷却时间重置为满
+                item.cooldownRemaining = this.getActualCooldown(item); // 冷却时间重置为实际值
                 item.isReady = false; // 进度条为0
+                
+                // 重置民兵团特殊技能状态
+                if (item.id === 'militia') {
+                    item.militiaBonus = 0;
+                    console.log('民兵团技能已重置，下次生产回到基础数量');
+                }
             }
         }
         
@@ -773,8 +1011,14 @@ class InventorySystem {
         for (let i = 0; i < this.backpack.length; i++) {
             const item = this.backpack[i];
             if (item && item !== 'occupied') {
-                item.cooldownRemaining = item.template.cooldown; // 保持未ready状态
+                item.cooldownRemaining = this.getActualCooldown(item); // 使用实际冷却时间
                 item.isReady = false; // 进度条为0
+                
+                // 重置民兵团特殊技能状态
+                if (item.id === 'militia') {
+                    item.militiaBonus = 0;
+                    console.log('背包民兵团技能已重置');
+                }
             }
         }
         
@@ -1209,6 +1453,9 @@ class InventorySystem {
         for (let i = 0; i < itemSize; i++) {
             this.inventory[slotIndex + i] = null;
         }
+        
+        // 刷新徽章效果（物品移除可能影响徽章效果）
+        this.refreshAllBadgeEffects();
     }
     
     showSellEffect(sellPrice) {
@@ -1338,9 +1585,10 @@ class InventorySystem {
                 const progressFill = slot.querySelector('.inventory-item-progress-fill');
                 
                 if (progressFill) {
-                    // 更新进度条
+                    // 更新进度条（使用实际冷却时间）
+                    const actualCooldown = this.getActualCooldown(item);
                     const progressPercent = item.isReady ? 100 : 
-                        ((item.template.cooldown - item.cooldownRemaining) / item.template.cooldown) * 100;
+                        ((actualCooldown - item.cooldownRemaining) / actualCooldown) * 100;
                     progressFill.style.width = progressPercent + '%';
                     
                     // 更新进度条颜色
@@ -1358,7 +1606,17 @@ class InventorySystem {
             for (let i = 0; i < this.inventory.length; i++) {
                 const item = this.inventory[i];
                 if (item && item !== 'occupied' && !item.isReady) {
-                    item.cooldownRemaining--;
+                    // 计算冷却减少量（加速状态下翻倍）
+                    let cooldownDecrease = 1;
+                    if (item.accelerationTime > 0) {
+                        cooldownDecrease = 2; // 加速状态下冷却速度翻倍
+                        item.accelerationTime--; // 减少加速时间
+                        if (item.accelerationTime <= 0) {
+                            console.log(`物品${item.template.name}加速状态结束`);
+                        }
+                    }
+                    
+                    item.cooldownRemaining -= cooldownDecrease;
                     if (item.cooldownRemaining <= 0) {
                         item.isReady = true;
                         needsUpdate = true;
@@ -1489,10 +1747,11 @@ class InventorySystem {
             progressFillElement.className = 'inventory-item-progress-fill';
             progressFillElement.style.width = '0%';
         } else {
-            // 战斗区物品有冷却时间
+            // 战斗区物品有冷却时间（使用实际冷却时间计算进度）
+            const actualCooldown = this.getActualCooldown(item);
             progressFillElement.className = `inventory-item-progress-fill ${item.isReady ? 'ready' : ''}`;
             const progressPercent = item.isReady ? 100 : 
-                ((item.template.cooldown - item.cooldownRemaining) / item.template.cooldown) * 100;
+                ((actualCooldown - item.cooldownRemaining) / actualCooldown) * 100;
             progressFillElement.style.width = progressPercent + '%';
         }
         
@@ -1869,8 +2128,8 @@ class InventorySystem {
     addItemToBackpackAtSlot(item, slotIndex) {
         const itemSize = item.template.size;
         
-        // 确保背包物品进度条始终为0
-        item.cooldownRemaining = item.template.cooldown;
+        // 确保背包物品进度条始终为0（使用实际冷却时间）
+        item.cooldownRemaining = this.getActualCooldown(item);
         item.isReady = false;
         
         // 放置到背包指定位置
@@ -1911,6 +2170,9 @@ class InventorySystem {
         }
         
         console.log('Item moved to inventory:', this.inventory[toInventorySlot]);
+        
+        // 刷新徽章效果（物品位置变化可能影响徽章效果）
+        this.refreshAllBadgeEffects();
         
         // 更新显示
         this.updateInventoryDisplay();
@@ -1976,10 +2238,35 @@ class InventorySystem {
                 id: shopItem.id,
                 template: template,
                 quality: shopItem.quality,
-                cooldownRemaining: template.cooldown, // 始终从满冷却开始
+                cooldownRemaining: 0, // 先设为0，后面会更新
                 isReady: false, // 进度条始终为0
-                meleeBonus: 0 // 忍者特殊技能：近战攻击力加成
+                attackBonus: 0, // 通用攻击力加成（宝剑等物品会修改这个值）
+                cooldownReduction: 0, // 冷却时间减少（徽章等物品会修改这个值）
+                meleeBonus: 0, // 忍者特殊技能：近战攻击力加成
+                militiaBonus: 0, // 民兵团特殊技能：额外单位计数器
+                barbarianBonus: 0, // 野蛮人特殊技能：品质攻击力加成
+                gladiatorBonus: 0, // 角斗士特殊技能：战斗攻击力加成
+                accelerationTime: 0, // 战旗加速剩余时间
+                giantHealthBonus: 0, // 巨人升级效果：品质生命值加成
+                swordmasterBonus: 0 // 剑圣特殊技能：相邻召唤攻击力加成
             };
+            
+            // 计算实际的冷却时间（考虑升级效果）
+            const actualCooldown = this.getActualCooldown(newItem);
+            newItem.cooldownRemaining = actualCooldown;
+            
+            // 为野蛮人计算品质攻击力加成（相对于起始品质）
+            if (newItem.id === 'barbarian') {
+                const qualityLevelsAboveMin = newItem.quality - template.minQuality;
+                newItem.barbarianBonus = qualityLevelsAboveMin * 30; // 每提升一个品质+30攻击力
+            }
+            
+            // 为巨人计算品质生命值加成（相对于起始品质）
+            if (newItem.id === 'giant') {
+                const qualityLevelsAboveMin = newItem.quality - template.minQuality;
+                newItem.giantHealthBonus = qualityLevelsAboveMin * 100; // 每提升一个品质+100生命值
+            }
+            
             
             this.addItemToBackpackAtSlot(newItem, targetSlot);
         } else {
@@ -2000,10 +2287,28 @@ class InventorySystem {
                     id: shopItem.id,
                     template: template,
                     quality: shopItem.quality,
-                    cooldownRemaining: template.cooldown, // 始终从满冷却开始
+                    cooldownRemaining: 0, // 先设为0，后面会更新
                     isReady: false, // 进度条始终为0
-                    meleeBonus: 0 // 忍者特殊技能：近战攻击力加成
+                    attackBonus: 0, // 通用攻击力加成（宝剑等物品会修改这个值）
+                    cooldownReduction: 0, // 冷却时间减少（徽章等物品会修改这个值）
+                    meleeBonus: 0, // 忍者特殊技能：近战攻击力加成
+                    militiaBonus: 0, // 民兵团特殊技能：额外单位计数器
+                    barbarianBonus: 0, // 野蛮人特殊技能：品质攻击力加成
+                    gladiatorBonus: 0, // 角斗士特殊技能：战斗攻击力加成
+                    giantHealthBonus: 0, // 巨人升级效果：品质生命值加成
+                    swordmasterBonus: 0 // 剑圣特殊技能：相邻召唤攻击力加成
                 };
+                
+                // 计算实际的冷却时间（考虑升级效果）
+                const actualCooldown = this.getActualCooldown(newItem);
+                newItem.cooldownRemaining = actualCooldown;
+                
+                // 为野蛮人计算品质攻击力加成（相对于起始品质）
+                if (newItem.id === 'barbarian') {
+                    const qualityLevelsAboveMin = newItem.quality - template.minQuality;
+                    newItem.barbarianBonus = qualityLevelsAboveMin * 30; // 每提升一个品质+30攻击力
+                }
+                
                 
                 this.addItemToBackpackAutoSlot(newItem);
             } else {
@@ -2086,31 +2391,29 @@ class InventorySystem {
         document.getElementById('shop-info-icon').textContent = template.icon;
         document.getElementById('shop-info-name').textContent = template.name;
         
-        // 设置品质信息 - 显示等级数字
+        // 设置物品类型信息（替换原本的等级显示）
         const qualityElement = document.getElementById('shop-info-quality');
-        qualityElement.textContent = `等级 ${quality}`;
-        qualityElement.className = 'shop-info-quality';
+        const attackTypeNames = {
+            melee: '近战',
+            ranged: '远程',
+            tank: '坦克',
+            mage: '魔法'
+        };
+        qualityElement.textContent = attackTypeNames[template.unitType] || '近战';
+        qualityElement.className = `shop-info-quality ${template.unitType}`;
         
-        // 获取品质信息并设置颜色
-        const qualityInfo = this.qualitySystem.getQuality(quality);
+        // 根据兵种类型设置颜色
         let qualityColor = '#3498db'; // 默认蓝色边框
         
-        // 根据品质设置颜色类和边框颜色
-        if (quality === 1) {
-            qualityElement.classList.add('green');
-            qualityColor = '#4CAF50'; // 绿色
-        } else if (quality === 2) {
-            qualityElement.classList.add('blue');
-            qualityColor = '#2196F3'; // 蓝色
-        } else if (quality === 3) {
-            qualityElement.classList.add('purple');
-            qualityColor = '#9C27B0'; // 紫色
-        } else if (quality === 4) {
-            qualityElement.classList.add('orange');
-            qualityColor = '#FF9800'; // 橙色
-        } else if (quality === 5) {
-            qualityElement.classList.add('red');
-            qualityColor = '#F44336'; // 红色
+        // 根据兵种设置颜色类和边框颜色
+        if (template.unitType === 'melee') {
+            qualityColor = '#e74c3c'; // 红色 - 近战
+        } else if (template.unitType === 'ranged') {
+            qualityColor = '#3498db'; // 蓝色 - 远程
+        } else if (template.unitType === 'tank') {
+            qualityColor = '#f39c12'; // 橙色 - 坦克
+        } else if (template.unitType === 'mage') {
+            qualityColor = '#9b59b6'; // 紫色 - 法师
         }
         
         // 设置弹窗边框颜色
@@ -2119,8 +2422,17 @@ class InventorySystem {
             popupContent.style.borderColor = qualityColor;
         }
         
+        // 为显示创建临时的完整物品对象（包含所有加成计算）
+        let displayItem = item;
+        if (!item.giantHealthBonus && item.id === 'giant' && item.quality) {
+            // 为商店中的巨人物品临时计算生命值加成
+            displayItem = {...item};
+            const qualityLevelsAboveMin = item.quality - template.minQuality;
+            displayItem.giantHealthBonus = qualityLevelsAboveMin * 100;
+        }
+        
         // 获取单位属性（基于具体单位key）
-        const unitStats = this.getUnitStats(template.unitType, item.id, item);
+        const unitStats = this.getUnitStats(template.unitType, item.id, displayItem);
         
         // 更新攻击emoji和颜色
         const attackEmojiElement = document.getElementById('shop-info-attack-emoji');
@@ -2137,38 +2449,173 @@ class InventorySystem {
             attackEmojiElement.className = `attack-emoji ${template.unitType}`;
         }
         
-        // 更新攻击类型标签
+        // 隐藏攻击类型标签（已移动到品质位置显示）
         const attackTypeBadge = document.getElementById('attack-type-badge');
         if (attackTypeBadge) {
-            const attackTypeNames = {
-                melee: '近战',
-                ranged: '远程',
-                tank: '坦克',
-                mage: '魔法'
-            };
-            
-            attackTypeBadge.textContent = attackTypeNames[template.unitType] || '近战';
-            attackTypeBadge.className = `attack-type-badge ${template.unitType}`;
+            attackTypeBadge.style.display = 'none';
         }
         
-        // 更新属性显示（显示基础属性，不受品质影响）
-        document.getElementById('shop-info-attack').textContent = unitStats.attack;
-        document.getElementById('shop-info-health').textContent = unitStats.health;
-        document.getElementById('shop-info-cooldown').textContent = `${template.cooldown/60}秒`;
-        document.getElementById('shop-info-count').textContent = template.unitCount;
-        document.getElementById('shop-info-speed').textContent = unitStats.speed;
-        document.getElementById('shop-info-base-damage').textContent = unitStats.baseDamage;
+        // 更新属性显示（触发间隔显示实际值，考虑升级效果）
+        const actualCooldown = this.getActualCooldown(item);
+        
+        // 检查是否为非召唤物品
+        const isNonSummonItem = template.unitCount === 0;
+        
+        // 获取所有stat-row元素
+        const statRows = document.querySelectorAll('.shop-info-stats .stat-row');
+        
+        if (isNonSummonItem) {
+            // 非召唤物品：只显示CD和特殊技能
+            // 被动物品（CD=-1）不显示CD属性
+            if (actualCooldown === -1) {
+                // 被动物品：完全隐藏包含CD的第二行
+                if (statRows[1]) statRows[1].style.display = 'none';
+            } else {
+                // 普通非召唤物品：显示CD
+                document.getElementById('shop-info-cooldown').textContent = `${actualCooldown/60}秒`;
+                const cooldownStatItem = document.getElementById('shop-info-cooldown').closest('.stat-item');
+                if (cooldownStatItem) {
+                    cooldownStatItem.style.display = '';
+                }
+                
+                // 显示第二行，但隐藏单位数
+                if (statRows[1]) {
+                    const countItem = statRows[1].querySelector('.stat-item:nth-child(2)');
+                    if (countItem) countItem.style.visibility = 'hidden'; // 隐藏单位数，保持布局空间
+                    statRows[1].style.display = 'flex';
+                }
+            }
+            
+            // 隐藏不相关的属性行
+            if (statRows[0]) statRows[0].style.display = 'none'; // 攻击力和血量
+            if (statRows[2]) statRows[2].style.display = 'none'; // 速度和基地伤害
+        } else {
+            // 召唤物品：显示所有属性
+            document.getElementById('shop-info-attack').textContent = unitStats.attack;
+            document.getElementById('shop-info-health').textContent = unitStats.health;
+            document.getElementById('shop-info-cooldown').textContent = `${actualCooldown/60}秒`;
+            document.getElementById('shop-info-speed').textContent = unitStats.speed;
+            
+            // 显示属性行
+            if (statRows[0]) statRows[0].style.display = 'flex'; // 攻击力和血量
+            if (statRows[1]) statRows[1].style.display = 'flex'; // CD和速度
+        }
         
         // 更新价格显示
         const price = this.getItemPrice(template, quality);
         document.getElementById('shop-info-cost').textContent = `💰${price}`;
         
-        // 显示特殊技能（只有忍者有特殊技能）
+        // 显示特殊技能（忍者和民兵团有特殊技能）
         const specialSkillElement = document.getElementById('shop-info-special-skill');
         if (item.id === 'assassin' && specialSkillElement) {
             specialSkillElement.classList.remove('hidden');
             const meleeBonus = item.meleeBonus || 0;
-            document.getElementById('skill-status').textContent = `当前加成: +${meleeBonus}`;
+            
+            // 根据当前品质动态生成技能描述
+            const currentQualityBonus = this.getAssassinQualityBonus(item.quality);
+            const qualityColor = this.getQualityColor(item.quality);
+            const skillDescElement = document.getElementById('skill-description');
+            if (skillDescElement) {
+                skillDescElement.innerHTML = `每购买一个<span class="melee-badge">近战</span>物品，忍者的攻击力增加 <span style="color: white; font-weight: bold;">+${currentQualityBonus}</span>`;
+            }
+            
+            const skillStatusElement = document.getElementById('skill-status');
+            skillStatusElement.innerHTML = `当前加成: <span style="color: white; font-weight: bold;">+${meleeBonus}</span>`;
+        } else if (item.id === 'militia' && specialSkillElement) {
+            specialSkillElement.classList.remove('hidden');
+            const militiaBonus = item.militiaBonus || 0;
+            const qualityColor = this.getQualityColor(item.quality);
+            
+            const skillDescElement = document.getElementById('skill-description');
+            if (skillDescElement) {
+                skillDescElement.innerHTML = `战斗中召唤后，本场战斗下次召唤多生产 <span style="color: white; font-weight: bold;">+1</span> 个单位`;
+            }
+            
+            const skillStatusElement = document.getElementById('skill-status');
+            skillStatusElement.innerHTML = `下次额外生产: <span style="color: white; font-weight: bold;">+${militiaBonus}</span> 个`;
+        } else if (item.id === 'gladiator' && specialSkillElement) {
+            specialSkillElement.classList.remove('hidden');
+            const gladiatorBonus = item.gladiatorBonus || 0;
+            const totalBonus = gladiatorBonus;
+            const qualityColor = this.getQualityColor(item.quality);
+            
+            const skillDescElement = document.getElementById('skill-description');
+            if (skillDescElement) {
+                const killBonus = this.getGladiatorKillBonus(item.quality);
+                skillDescElement.innerHTML = `战斗中我方近战单位消灭敌人后，物品攻击力 <span style="color: white; font-weight: bold;">+${killBonus}</span>`;
+            }
+            
+            const skillStatusElement = document.getElementById('skill-status');
+            skillStatusElement.innerHTML = `当前攻击力加成: <span style="color: white; font-weight: bold;">+${totalBonus}</span>`;
+        } else if (item.id === 'swordmaster' && specialSkillElement) {
+            specialSkillElement.classList.remove('hidden');
+            const swordmasterBonus = item.swordmasterBonus || 0;
+            const qualityColor = this.getQualityColor(item.quality);
+            
+            const skillDescElement = document.getElementById('skill-description');
+            if (skillDescElement) {
+                const qualityBonus = item.quality === 4 ? '+10' : '+15'; // 橙色+10, 红色+15
+                skillDescElement.innerHTML = `相邻物品每召唤一个<span class="melee-badge">近战</span>单位，本场战斗武士攻击力 <span style="color: white; font-weight: bold;">${qualityBonus}</span>`;
+            }
+            
+            const skillStatusElement = document.getElementById('skill-status');
+            skillStatusElement.innerHTML = `当前攻击力加成: <span style="color: white; font-weight: bold;">+${swordmasterBonus}</span>`;
+        } else if (item.id === 'titan' && specialSkillElement) {
+            specialSkillElement.classList.remove('hidden');
+            const titanCharges = item.titanCharges || 0;
+            const qualityColor = this.getQualityColor(item.quality);
+            
+            const skillDescElement = document.getElementById('skill-description');
+            if (skillDescElement) {
+                skillDescElement.innerHTML = `每次召唤<span class="melee-badge">近战</span>单位时，为泰坦 <span style="color: #17a2b8; font-weight: bold;">充能1秒</span><br>拥有 <span style="color: #f39c12; font-weight: bold;">800护盾</span>`;
+            }
+            
+            const skillStatusElement = document.getElementById('skill-status');
+            skillStatusElement.innerHTML = ``; // 不显示任何状态信息
+        } else if (item.id === 'giant' && specialSkillElement) {
+            specialSkillElement.classList.remove('hidden');
+            const qualityColor = this.getQualityColor(item.quality);
+            
+            const skillDescElement = document.getElementById('skill-description');
+            if (skillDescElement) {
+                skillDescElement.innerHTML = `受到非近战伤害减免 <span style="color: white; font-weight: bold;">40%</span>`;
+            }
+            
+            const skillStatusElement = document.getElementById('skill-status');
+            skillStatusElement.innerHTML = ``; // 不显示任何状态信息
+        } else if (item.id === 'warBanner' && specialSkillElement) {
+            specialSkillElement.classList.remove('hidden');
+            const qualityColor = this.getQualityColor(item.quality);
+            
+            const skillDescElement = document.getElementById('skill-description');
+            if (skillDescElement) {
+                skillDescElement.innerHTML = `为全场其他<span class="melee-badge">近战</span>物品 <span style="color: #17a2b8; font-weight: bold;">加速2秒</span>`;
+            }
+            
+            const skillStatusElement = document.getElementById('skill-status');
+            skillStatusElement.innerHTML = ``; // 不显示任何状态信息
+        } else if (item.id === 'magicSword' && specialSkillElement) {
+            specialSkillElement.classList.remove('hidden');
+            const attackBonus = this.getMagicSwordBonus(item.quality);
+            
+            const skillDescElement = document.getElementById('skill-description');
+            if (skillDescElement) {
+                skillDescElement.innerHTML = `为相邻的<span class="melee-badge">近战</span>物品增加 <span style="color: white; font-weight: bold;">+${attackBonus}</span> 攻击力`;
+            }
+            
+            const skillStatusElement = document.getElementById('skill-status');
+            skillStatusElement.innerHTML = ``; // 不显示任何状态信息
+        } else if (item.id === 'badge' && specialSkillElement) {
+            specialSkillElement.classList.remove('hidden');
+            const cooldownReduction = this.getBadgeReduction(item.quality);
+            
+            const skillDescElement = document.getElementById('skill-description');
+            if (skillDescElement) {
+                skillDescElement.innerHTML = `左侧<span class="melee-badge">近战</span>物品<span style="color: #3498db; font-weight: bold;">冷却-${cooldownReduction}秒</span>`;
+            }
+            
+            const skillStatusElement = document.getElementById('skill-status');
+            skillStatusElement.innerHTML = ``; // 不显示任何状态信息
         } else if (specialSkillElement) {
             specialSkillElement.classList.add('hidden');
         }
@@ -2273,19 +2720,21 @@ class InventorySystem {
         // 如果有具体的单位key，使用具体的单位属性
         if (unitKey) {
             const specificStats = {
-                // 近战单位
-                warrior:    { health: 100, attack: 30, range: 30, speed: 10, baseDamage: 20 },
-                assassin:   { health: 100, attack: 20, range: 30, speed: 12, baseDamage: 20 },
-                gladiator:  { health: 100, attack: 40, range: 30, speed: 10, baseDamage: 20 },
-                barbarian:  { health: 100, attack: 30, range: 30, speed: 9, baseDamage: 20 },
-                giant:      { health: 200, attack: 50, range: 30, speed: 6, baseDamage: 50 },
-                cavalry:    { health: 200, attack: 60, range: 30, speed: 14, baseDamage: 20 },
-                militia:    { health: 100, attack: 20, range: 30, speed: 9, baseDamage: 15 }, // 单个民兵属性
+                // 近战单位 - 按尺寸设计基地伤害
+                warrior:    { health: 100, attack: 30, range: 30, speed: 10, baseDamage: 20 }, // 小型
+                assassin:   { health: 100, attack: 20, range: 30, speed: 12, baseDamage: 20 }, // 小型
+                gladiator:  { health: 100, attack: 40, range: 30, speed: 10, baseDamage: 20 }, // 小型
+                barbarian:  { health: 100, attack: 40, range: 30, speed: 9, baseDamage: 20 },  // 小型
+                giant:      { health: 200, attack: 50, range: 30, speed: 6, baseDamage: 40 },  // 中型
+                cavalry:    { health: 200, attack: 60, range: 30, speed: 14, baseDamage: 40 }, // 中型
+                militia:    { health: 100, attack: 20, range: 30, speed: 9, baseDamage: 20 },  // 特殊：每个人20
+                swordmaster:{ health: 100, attack: 30, range: 30, speed: 11, baseDamage: 20 }, // 小型
+                titan:      { health: 400, attack: 150, range: 35, speed: 3, baseDamage: 60 }, // 大型
                 
-                // 其他兵种保持原样
-                bow:        { health: 80, attack: 20, range: 100, speed: 6, baseDamage: 20 },
-                staff:      { health: 60, attack: 35, range: 120, speed: 7, baseDamage: 20 },
-                shield:     { health: 200, attack: 15, range: 35, speed: 4, baseDamage: 20 }
+                // 其他兵种按小型标准
+                bow:        { health: 80, attack: 20, range: 100, speed: 6, baseDamage: 20 },  // 小型
+                staff:      { health: 60, attack: 35, range: 120, speed: 7, baseDamage: 20 },  // 小型
+                shield:     { health: 200, attack: 15, range: 35, speed: 4, baseDamage: 20 }   // 小型
             };
             
             if (specificStats[unitKey]) {
@@ -2294,6 +2743,31 @@ class InventorySystem {
                 // 忍者特殊技能：添加近战攻击力加成
                 if (unitKey === 'assassin' && item && item.meleeBonus) {
                     stats.attack += item.meleeBonus;
+                }
+                
+                // 野蛮人特殊技能：添加品质攻击力加成
+                if (unitKey === 'barbarian' && item && item.barbarianBonus) {
+                    stats.attack += item.barbarianBonus;
+                }
+                
+                // 角斗士技能：添加战斗攻击力加成
+                if (unitKey === 'gladiator' && item && item.gladiatorBonus) {
+                    stats.attack += item.gladiatorBonus;
+                }
+                
+                // 巨人升级效果：添加品质生命值加成
+                if (unitKey === 'giant' && item && item.giantHealthBonus) {
+                    stats.health += item.giantHealthBonus;
+                }
+                
+                // 武士特殊技能：添加相邻召唤攻击力加成
+                if (unitKey === 'swordmaster' && item && item.swordmasterBonus) {
+                    stats.attack += item.swordmasterBonus;
+                }
+                
+                // 宝剑等支援物品的通用攻击力加成
+                if (item && item.attackBonus) {
+                    stats.attack += item.attackBonus;
                 }
                 
                 return stats;
@@ -2318,14 +2792,25 @@ class InventorySystem {
             existingAttackLabel.remove();
         }
         
-        // 显示基础攻击力（不受品质影响）
-        const unitStats = this.getUnitStats(template.unitType, unitKey);
-        const attackPower = unitStats.attack;
+        // 检查是否为非召唤物品
+        const isNonSummonItem = template.unitCount === 0;
         
-        // 创建攻击力标签元素
+        // 创建标签元素
         const attackLabel = document.createElement('div');
         attackLabel.className = `attack-label ${template.unitType}`;
-        attackLabel.textContent = `${attackPower}`;
+        
+        if (isNonSummonItem) {
+            // 非召唤物品：显示流派图标
+            if (template.unitType === 'melee') {
+                attackLabel.innerHTML = '<span style="color: white; font-weight: bold;">⚔️</span>';
+            }
+            // 可以在这里为其他流派添加图标
+        } else {
+            // 召唤物品：显示攻击力数字
+            const unitStats = this.getUnitStats(template.unitType, unitKey);
+            const attackPower = unitStats.attack;
+            attackLabel.textContent = `${attackPower}`;
+        }
         
         // 添加到visual元素中
         visualElement.appendChild(attackLabel);
@@ -2339,14 +2824,25 @@ class InventorySystem {
             existingAttackLabel.remove();
         }
         
-        // 显示攻击力（包括忍者的meleeBonus加成）
-        const unitStats = this.getUnitStats(template.unitType, unitKey, item);
-        const attackPower = unitStats.attack;
+        // 检查是否为非召唤物品
+        const isNonSummonItem = template.unitCount === 0;
         
-        // 创建攻击力标签元素 - 使用与商店相同的样式
+        // 创建攻击力标签元素
         const attackLabel = document.createElement('div');
         attackLabel.className = `attack-label ${template.unitType}`;
-        attackLabel.textContent = `${attackPower}`;
+        
+        if (isNonSummonItem) {
+            // 非召唤物品：显示流派图标
+            if (template.unitType === 'melee') {
+                attackLabel.innerHTML = '<span style="color: white; font-weight: bold;">⚔️</span>';
+            }
+            // 可以在这里为其他流派添加图标
+        } else {
+            // 召唤物品：显示攻击力数字（包括忍者的meleeBonus加成）
+            const unitStats = this.getUnitStats(template.unitType, unitKey, item);
+            const attackPower = unitStats.attack;
+            attackLabel.textContent = `${attackPower}`;
+        }
         
         // 添加到物品元素中
         itemElement.appendChild(attackLabel);
@@ -2427,15 +2923,148 @@ class InventorySystem {
     
     // 根据忍者品质等级获取技能加成值
     getAssassinQualityBonus(quality) {
-        // 品质等级对应的加成：绿+1，蓝+2，紫+4，橙+8，红+16
+        // 品质等级对应的加成：绿+1，蓝+2，紫+3，橙+4，红+5
         const bonusMap = {
             1: 1,   // 绿色
             2: 2,   // 蓝色
-            3: 4,   // 紫色
-            4: 8,   // 橙色
-            5: 16   // 红色
+            3: 3,   // 紫色
+            4: 4,   // 橙色
+            5: 5    // 红色
         };
         return bonusMap[quality] || 1; // 默认加成为1
+    }
+    
+    // 获取品质对应的颜色
+    getQualityColor(quality) {
+        const colorMap = {
+            1: '#4CAF50',  // 绿色
+            2: '#2196F3',  // 蓝色
+            3: '#9C27B0',  // 紫色
+            4: '#FF9800',  // 橙色
+            5: '#F44336'   // 红色
+        };
+        return colorMap[quality] || '#4CAF50'; // 默认绿色
+    }
+    
+    
+    // 计算物品升级后的真实触发间隔
+    getActualCooldown(item) {
+        const template = item.template;
+        let baseCooldown = template.cooldown;
+        
+        // 被动物品直接返回-1
+        if (baseCooldown === -1) {
+            return -1;
+        }
+        
+        // 忍者、野蛮人、角斗士、巨人和武士的升级效果是技能升级，不改变触发间隔
+        if (item.id === 'assassin' || item.id === 'barbarian' || item.id === 'gladiator' || item.id === 'giant' || item.id === 'swordmaster') {
+            // 这些单位不享受品质减少，但仍然享受徽章减少
+            const badgeReduction = (item.cooldownReduction || 0) * 60; // 转换为帧数
+            const finalCooldown = baseCooldown - badgeReduction;
+            return Math.max(60, finalCooldown); // 最小60帧（1秒）
+        }
+        
+        // 其他单位每升一级触发间隔减少（相对于起始品质）
+        const qualityLevelsAboveMin = item.quality - item.template.minQuality; // 相对于起始品质的升级次数
+        
+        // 不同单位的冷却减免
+        let reductionPerLevel;
+        if (item.id === 'militia') {
+            reductionPerLevel = 1.0; // 民兵团每升级-1秒
+        } else if (item.id === 'titan') {
+            reductionPerLevel = 4.0; // 泰坦每升级-4秒
+        } else {
+            reductionPerLevel = 0.5; // 其他单位-0.5秒
+        }
+        
+        const qualityReduction = qualityLevelsAboveMin * reductionPerLevel;
+        const qualityReductionInFrames = qualityReduction * 60; // 转换为帧数（60帧/秒）
+        
+        // 徽章等物品提供的冷却时间减少
+        const badgeReduction = (item.cooldownReduction || 0) * 60; // 转换为帧数
+        
+        const finalCooldown = baseCooldown - qualityReductionInFrames - badgeReduction;
+        return Math.max(60, finalCooldown); // 最小60帧（1秒）
+    }
+    
+    // 根据角斗士品质获取每次击杀的攻击力加成
+    getGladiatorKillBonus(quality) {
+        const bonusMap = {
+            green: 3,
+            blue: 3,
+            purple: 3,
+            orange: 5,
+            red: 7
+        };
+        return bonusMap[quality] || 3;
+    }
+
+    // 为所有角斗士物品增加攻击力（消灭敌人时触发）
+    boostGladiatorAttack() {
+        let boosted = false;
+        
+        // 为战斗区的角斗士加攻击力（根据品质决定加成数值）
+        for (let i = 0; i < this.inventory.length; i++) {
+            const item = this.inventory[i];
+            if (item && item !== 'occupied' && item.id === 'gladiator') {
+                const killBonus = this.getGladiatorKillBonus(item.quality);
+                item.gladiatorBonus = (item.gladiatorBonus || 0) + killBonus;
+                boosted = true;
+                console.log(`战斗区角斗士(${item.quality})攻击力增加 +${killBonus}！当前战斗加成: +${item.gladiatorBonus}`);
+            }
+        }
+        
+        // 为背包的角斗士加攻击力（根据品质决定加成数值）
+        for (let i = 0; i < this.backpack.length; i++) {
+            const item = this.backpack[i];
+            if (item && item !== 'occupied' && item.id === 'gladiator') {
+                const killBonus = this.getGladiatorKillBonus(item.quality);
+                item.gladiatorBonus = (item.gladiatorBonus || 0) + killBonus;
+                boosted = true;
+                console.log(`背包角斗士(${item.quality})攻击力增加 +${killBonus}！当前战斗加成: +${item.gladiatorBonus}`);
+            }
+        }
+        
+        if (boosted) {
+            // 更新现有角斗士单位的攻击力
+            this.updateGladiatorUnitsAttack();
+            // 更新显示
+            this.updateInventoryDisplay();
+            this.updateBackpackDisplay();
+            console.log('角斗士特殊技能触发：根据品质获得不同攻击力加成！');
+        }
+    }
+    
+    // 更新在场角斗士单位的攻击力
+    updateGladiatorUnitsAttack() {
+        // 获取当前所有角斗士物品的最大战斗攻击力加成
+        let maxGladiatorBonus = 0;
+        
+        // 检查战斗区角斗士
+        for (let i = 0; i < this.inventory.length; i++) {
+            const item = this.inventory[i];
+            if (item && item !== 'occupied' && item.id === 'gladiator') {
+                maxGladiatorBonus = Math.max(maxGladiatorBonus, item.gladiatorBonus || 0);
+            }
+        }
+        
+        // 检查背包角斗士
+        for (let i = 0; i < this.backpack.length; i++) {
+            const item = this.backpack[i];
+            if (item && item !== 'occupied' && item.id === 'gladiator') {
+                maxGladiatorBonus = Math.max(maxGladiatorBonus, item.gladiatorBonus || 0);
+            }
+        }
+        
+        // 更新所有在场的角斗士单位攻击力
+        for (const unit of this.game.playerUnits) {
+            if (unit.itemId === 'gladiator') {
+                // 重新计算攻击力：基础 + 战斗加成
+                const baseAttack = this.getUnitStats('gladiator').attack;
+                unit.attackPower = baseAttack + maxGladiatorBonus;
+            }
+        }
     }
     
     // 更新在场忍者单位的攻击力
@@ -2471,6 +3100,348 @@ class InventorySystem {
                 }
             });
         }
+    }
+    
+    // 根据武士品质获取每次相邻召唤的攻击力加成
+    getSwordmasterBonus(quality) {
+        // 支持数字格式的品质
+        if (typeof quality === 'number') {
+            return quality >= 5 ? 15 : 10; // 红色(5)+15, 其他+10
+        }
+        
+        // 支持字符串格式的品质
+        const bonusMap = {
+            green: 10,
+            blue: 10,
+            purple: 10,
+            orange: 10,  // 橙色升级效果：+10
+            red: 15      // 红色升级效果：+15
+        };
+        return bonusMap[quality] || 10;
+    }
+    
+    // 检查并增强相邻位置的武士攻击力（当有近战单位召唤时触发）
+    boostAdjacentSwordmasters(currentSlot, unitCount = 1) {
+        // 检查左右相邻位置
+        const adjacentSlots = [currentSlot - 1, currentSlot + 1];
+        
+        for (const slot of adjacentSlots) {
+            // 检查位置是否合法（0-5范围内）
+            if (slot >= 0 && slot < 6) {
+                const adjacentItem = this.inventory[slot];
+                
+                // 如果相邻位置是武士
+                if (adjacentItem && adjacentItem !== 'occupied' && adjacentItem.id === 'swordmaster') {
+                    const singleBonus = this.getSwordmasterBonus(adjacentItem.quality);
+                    const totalBonus = singleBonus * unitCount; // 按召唤数量叠加
+                    adjacentItem.swordmasterBonus = (adjacentItem.swordmasterBonus || 0) + totalBonus;
+                    
+                    console.log(`武士(位置${slot})攻击力增加 +${totalBonus}(${singleBonus}×${unitCount})！当前加成: +${adjacentItem.swordmasterBonus}`);
+                    
+                    // 更新显示
+                    this.updateInventoryDisplay();
+                }
+            }
+        }
+    }
+    
+    // 每场战斗结束时重置所有武士的攻击力加成
+    resetSwordmasterBonuses() {
+        // 重置战斗区武士
+        for (let i = 0; i < this.inventory.length; i++) {
+            const item = this.inventory[i];
+            if (item && item !== 'occupied' && item.id === 'swordmaster') {
+                item.swordmasterBonus = 0;
+            }
+        }
+        
+        // 重置背包武士
+        for (let i = 0; i < this.backpack.length; i++) {
+            const item = this.backpack[i];
+            if (item && item !== 'occupied' && item.id === 'swordmaster') {
+                item.swordmasterBonus = 0;
+            }
+        }
+        
+        console.log('所有武士攻击力加成已重置');
+    }
+    
+    // 每场战斗结束时重置所有物品的宝剑攻击力加成
+    resetAttackBonuses() {
+        // 重置战斗区物品的攻击力加成
+        for (let i = 0; i < this.inventory.length; i++) {
+            const item = this.inventory[i];
+            if (item && item !== 'occupied' && item.attackBonus) {
+                item.attackBonus = 0;
+            }
+        }
+        
+        // 重置背包物品的攻击力加成
+        for (let i = 0; i < this.backpack.length; i++) {
+            const item = this.backpack[i];
+            if (item && item !== 'occupied' && item.attackBonus) {
+                item.attackBonus = 0;
+            }
+        }
+        
+        console.log('所有宝剑攻击力加成已重置');
+    }
+    
+    // 每场战斗结束时重置所有角斗士的攻击力加成
+    resetGladiatorBonuses() {
+        // 重置战斗区角斗士
+        for (let i = 0; i < this.inventory.length; i++) {
+            const item = this.inventory[i];
+            if (item && item !== 'occupied' && item.gladiatorBonus) {
+                item.gladiatorBonus = 0;
+            }
+        }
+        
+        // 重置背包角斗士
+        for (let i = 0; i < this.backpack.length; i++) {
+            const item = this.backpack[i];
+            if (item && item !== 'occupied' && item.gladiatorBonus) {
+                item.gladiatorBonus = 0;
+            }
+        }
+        
+        console.log('所有角斗士攻击力加成已重置');
+    }
+    
+    // 宝剑特殊技能：获取品质对应的攻击力加成
+    getMagicSwordBonus(quality) {
+        const bonusMap = {
+            2: 10,  // 蓝色
+            3: 15,  // 紫色  
+            4: 20,  // 橙色
+            5: 25   // 红色
+        };
+        return bonusMap[quality] || 10;
+    }
+    
+    // 宝剑特殊技能：触发时为相邻的近战物品增加攻击力
+    triggerMagicSwordEffect(swordSlot) {
+        const swordItem = this.inventory[swordSlot];
+        if (!swordItem || swordItem.id !== 'magicSword') return;
+        
+        const bonus = this.getMagicSwordBonus(swordItem.quality);
+        const adjacentSlots = [swordSlot - 1, swordSlot + 1];
+        let affectedCount = 0;
+        
+        for (const slot of adjacentSlots) {
+            if (slot >= 0 && slot < 6) {
+                const adjacentItem = this.inventory[slot];
+                if (adjacentItem && adjacentItem !== 'occupied' && adjacentItem.template.unitType === 'melee') {
+                    // 为相邻近战物品永久增加攻击力（本场战斗中）
+                    adjacentItem.attackBonus = (adjacentItem.attackBonus || 0) + bonus;
+                    affectedCount++;
+                    console.log(`宝剑触发！为相邻近战物品(位置${slot})增加攻击力 +${bonus}！当前总加成: +${adjacentItem.attackBonus}`);
+                }
+            }
+        }
+        
+        if (affectedCount > 0) {
+            console.log(`宝剑效果触发完成，影响了 ${affectedCount} 个相邻近战物品`);
+            // 更新显示以反映攻击力变化
+            this.updateInventoryDisplay();
+        } else {
+            console.log('宝剑触发，但没有相邻的近战物品');
+        }
+    }
+    
+    // 徽章特殊技能：获取品质对应的冷却时间减少
+    getBadgeReduction(quality) {
+        const reductionMap = {
+            4: 2,  // 橙色：-2秒
+            5: 3   // 红色：-3秒
+        };
+        return reductionMap[quality] || 2;
+    }
+    
+    // 徽章被动效果：为左侧第一格的近战物品减少冷却时间
+    applyBadgeEffect(badgeSlot) {
+        const badgeItem = this.inventory[badgeSlot];
+        if (!badgeItem || badgeItem.id !== 'badge') return;
+        
+        const leftSlot = badgeSlot - 1;
+        if (leftSlot >= 0) {
+            const leftItem = this.inventory[leftSlot];
+            
+            if (leftItem === 'occupied') {
+                // 左侧被占用，查找这个被占用格子属于哪个物品
+                const actualItem = this.findItemByOccupiedSlot(leftSlot);
+                if (actualItem && actualItem.template.unitType === 'melee') {
+                    const reduction = this.getBadgeReduction(badgeItem.quality);
+                    actualItem.cooldownReduction = (actualItem.cooldownReduction || 0) + reduction;
+                    console.log(`徽章为左侧被占用格子的近战物品(${actualItem.id})减少冷却时间 -${reduction}秒！当前总减少: -${actualItem.cooldownReduction}秒`);
+                    
+                    // 重新计算并更新冷却时间
+                    const newCooldown = this.getActualCooldown(actualItem);
+                    actualItem.cooldownRemaining = newCooldown;
+                }
+            } else if (leftItem && leftItem.template.unitType === 'melee') {
+                // 左侧是实际的近战物品
+                const reduction = this.getBadgeReduction(badgeItem.quality);
+                leftItem.cooldownReduction = (leftItem.cooldownReduction || 0) + reduction;
+                console.log(`徽章为左侧近战物品(位置${leftSlot}, ${leftItem.id})减少冷却时间 -${reduction}秒！当前总减少: -${leftItem.cooldownReduction}秒`);
+                
+                // 重新计算并更新冷却时间
+                const newCooldown = this.getActualCooldown(leftItem);
+                leftItem.cooldownRemaining = newCooldown;
+            }
+        }
+    }
+    
+    // 根据被占用的格子查找对应的实际物品
+    findItemByOccupiedSlot(occupiedSlot) {
+        // 向左查找可能的主物品位置
+        for (let i = occupiedSlot - 1; i >= 0; i--) {
+            const item = this.inventory[i];
+            if (item && item !== 'occupied') {
+                // 检查这个物品的大小是否覆盖了occupiedSlot
+                const itemSize = item.template.size;
+                if (i + itemSize > occupiedSlot) {
+                    return item; // 找到了覆盖这个位置的物品
+                }
+                break; // 如果这个物品不覆盖，就不用继续找了
+            }
+        }
+        return null;
+    }
+    
+    // 检查右侧是否有徽章，并应用冷却减少
+    checkRightBadge(itemSlot) {
+        const item = this.inventory[itemSlot];
+        if (!item || item.template.unitType !== 'melee') return;
+        
+        const rightSlot = itemSlot + 1;
+        if (rightSlot < 6) {
+            const rightItem = this.inventory[rightSlot];
+            if (rightItem && rightItem !== 'occupied' && rightItem.id === 'badge') {
+                const reduction = this.getBadgeReduction(rightItem.quality);
+                item.cooldownReduction = (item.cooldownReduction || 0) + reduction;
+                console.log(`近战物品(位置${itemSlot})受到右侧徽章减少冷却时间 -${reduction}秒！当前总减少: -${item.cooldownReduction}秒`);
+                
+                // 重新计算并更新冷却时间
+                const newCooldown = this.getActualCooldown(item);
+                item.cooldownRemaining = newCooldown;
+            }
+        }
+    }
+    
+    // 刷新所有物品的徽章冷却减少效果
+    refreshAllBadgeEffects() {
+        // 先重置所有物品的cooldownReduction
+        for (let i = 0; i < this.inventory.length; i++) {
+            const item = this.inventory[i];
+            if (item && item !== 'occupied') {
+                item.cooldownReduction = 0;
+            }
+        }
+        
+        // 重新计算所有徽章的效果
+        for (let i = 0; i < this.inventory.length; i++) {
+            const item = this.inventory[i];
+            if (item && item !== 'occupied' && item.id === 'badge') {
+                this.applyBadgeEffect(i);
+            }
+        }
+        
+        // 重新计算所有物品的冷却时间
+        for (let i = 0; i < this.inventory.length; i++) {
+            const item = this.inventory[i];
+            if (item && item !== 'occupied') {
+                const newCooldown = this.getActualCooldown(item);
+                if (newCooldown !== -1) { // 非被动物品
+                    item.cooldownRemaining = newCooldown;
+                }
+            }
+        }
+    }
+    
+    // 泰坦特殊技能：为所有泰坦充能1秒（减少冷却时间）
+    chargeTitans() {
+        let charged = false;
+        const chargeAmount = 60; // 1秒 = 60帧
+        
+        // 为战斗区的泰坦充能
+        for (let i = 0; i < this.inventory.length; i++) {
+            const item = this.inventory[i];
+            if (item && item !== 'occupied' && item.id === 'titan') {
+                // 只有在冷却中的泰坦才能充能
+                if (item.cooldownRemaining > 0) {
+                    item.cooldownRemaining = Math.max(0, item.cooldownRemaining - chargeAmount);
+                    charged = true;
+                    
+                    // 如果充能后冷却时间归零，标记为准备就绪
+                    if (item.cooldownRemaining === 0) {
+                        item.isReady = true;
+                    }
+                    
+                    console.log(`泰坦(位置${i})充能1秒，剩余冷却: ${Math.ceil(item.cooldownRemaining/60)}秒`);
+                }
+            }
+        }
+        
+        
+        if (charged) {
+            // 更新显示以反映充能效果
+            this.updateInventoryDisplay();
+            this.updateBackpackDisplay();
+            console.log('泰坦特殊技能触发：近战单位召唤为泰坦充能！');
+        }
+    }
+    
+    // 添加测试单位到战斗区和背包
+    addTestUnits() {
+        // 在背包中添加一个初始泰坦
+        const titanTemplate = this.itemTemplates.titan;
+        const titanItem = {
+            id: 'titan',
+            template: titanTemplate,
+            quality: titanTemplate.minQuality, // 橙色品质
+            cooldownRemaining: 0,
+            isReady: false,
+            attackBonus: 0,
+            cooldownReduction: 0,
+            meleeBonus: 0,
+            militiaBonus: 0,
+            barbarianBonus: 0,
+            accelerationTime: 0
+        };
+
+        // 计算实际的冷却时间
+        const actualCooldown = this.getActualCooldown(titanItem);
+        titanItem.cooldownRemaining = actualCooldown;
+
+        // 将泰坦放到背包第一个位置（大小为3，占用0,1,2位置）
+        this.backpack[0] = titanItem;
+        this.backpack[1] = 'occupied';
+        this.backpack[2] = 'occupied';
+
+        console.log('游戏开始：背包中已添加一个泰坦');
+    }
+    
+    // 战旗特殊能力：全场近战单位加速2秒
+    triggerWarBannerAcceleration() {
+        let acceleratedCount = 0;
+        const accelerationTime = 120; // 2秒 = 120帧
+        
+        // 为战斗区所有其他近战物品加速（排除战旗自己）
+        for (let i = 0; i < this.inventory.length; i++) {
+            const item = this.inventory[i];
+            if (item && item !== 'occupied' && item.template.unitType === 'melee' && item.id !== 'warBanner') {
+                // 累加加速时间
+                item.accelerationTime = (item.accelerationTime || 0) + accelerationTime;
+                acceleratedCount++;
+            }
+        }
+        
+        console.log(`战旗效果触发！${acceleratedCount}个其他近战物品获得2秒加速`);
+        Utils.playSound('buff');
+        
+        // 更新显示
+        this.updateInventoryDisplay();
     }
     
 }

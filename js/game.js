@@ -7,8 +7,8 @@ class Game {
         // 游戏状态
         this.gameState = 'playing'; // 'playing', 'paused', 'gameover'
         this.gamePhase = 'preparation'; // 'preparation', 'battle'
-        this.playerGold = 20;
-        this.enemyGold = 300;
+        this.playerGold = 12; // 第1波的金币：6+6*1=12
+        this.enemyGold = 200; // 降低第1关敌人初始金币
         this.wave = 1;
         this.showWaveInfo = false;
         this.waveInfoTimer = 0;
@@ -25,8 +25,7 @@ class Game {
         // AI设置
         this.enemyAI = {
             spawnTimer: 0,
-            spawnInterval: 240, // 4秒
-            strategy: 'balanced'
+            spawnInterval: 300 // 5秒，第1波初始速度
         };
         
         // 游戏计时器
@@ -59,6 +58,14 @@ class Game {
         
         // 显示第一波信息
         this.showWave(1);
+    }
+
+    // 敌人被消灭时的回调（用于角斗士技能）
+    onEnemyKilled(deadEnemy, killer) {
+        // 只有玩家的近战单位击杀敌人才触发角斗士技能
+        if (killer.team === 'player' && killer.type === 'melee') {
+            this.inventorySystem.boostGladiatorAttack();
+        }
     }
 
     bindEvents() {
@@ -102,6 +109,15 @@ class Game {
         
         // 重置所有物品的进度条为0
         this.inventorySystem.resetAllItemCooldowns();
+        
+        // 重置剑圣攻击力加成
+        this.inventorySystem.resetSwordmasterBonuses();
+        
+        // 重置宝剑攻击力加成
+        this.inventorySystem.resetAttackBonuses();
+        
+        // 重置角斗士攻击力加成
+        this.inventorySystem.resetGladiatorBonuses();
         
         // 进入下一波
         this.nextWave();
@@ -217,13 +233,26 @@ class Game {
         }
     }
 
-    spawnPlayerUnitBySpecificType(itemId, unitType) {
+    spawnPlayerUnitBySpecificType(itemId, unitType, bonusAttack = 0, bonusHealth = 0) {
         if (this.gameState === 'playing' && this.gamePhase === 'battle') {
             const unit = new Unit(unitType, 'player', 
                 70 + Utils.randomInt(-20, 20), 
                 this.canvas.height / 2 + Utils.randomInt(-30, 30),
                 itemId  // 传递具体的物品ID
             );
+            
+            // 应用额外的攻击力加成（主要用于角斗士）
+            if (bonusAttack > 0) {
+                unit.attackPower += bonusAttack;
+                console.log(`${itemId} 单位获得攻击力加成 +${bonusAttack}，总攻击力: ${unit.attackPower}`);
+            }
+            
+            // 应用额外的生命值加成（主要用于巨人）
+            if (bonusHealth > 0) {
+                unit.health += bonusHealth;
+                unit.maxHealth += bonusHealth;
+                console.log(`${itemId} 单位获得生命值加成 +${bonusHealth}，总生命值: ${unit.maxHealth}`);
+            }
             
             this.playerUnits.push(unit);
             Utils.playSound('spawn');
@@ -233,20 +262,8 @@ class Game {
     spawnEnemyUnit() {
         if (this.gameState !== 'playing' || this.gamePhase !== 'battle') return;
         
-        // AI选择单位类型
-        const unitTypes = ['melee', 'ranged', 'tank', 'mage'];
-        let unitType;
-        
-        switch (this.enemyAI.strategy) {
-            case 'aggressive':
-                unitType = Utils.randomInt(0, 10) < 7 ? 'melee' : 'ranged';
-                break;
-            case 'defensive':
-                unitType = Utils.randomInt(0, 10) < 6 ? 'tank' : 'ranged';
-                break;
-            default: // balanced
-                unitType = unitTypes[Utils.randomInt(0, unitTypes.length - 1)];
-        }
+        // 根据波数选择兵种类型
+        const unitType = this.getWaveUnitType();
         
         const unit = new Unit(unitType, 'enemy',
             this.canvas.width - 70 + Utils.randomInt(-20, 20),
@@ -258,6 +275,79 @@ class Game {
             this.enemyGold -= cost;
             this.enemyUnits.push(unit);
         }
+    }
+
+    getWaveUnitType() {
+        // 每波的兵种配置 - 按照波次名称设计
+        const waveConfigs = {
+            1: { // 近战兵团 ⚔️
+                melee: 90,   // 90%近战
+                tank: 10     // 10%坦克
+            },
+            2: { // 弓箭军团 🏹
+                ranged: 70,  // 70%远程
+                melee: 20,   // 20%近战
+                mage: 10     // 10%法师
+            },
+            3: { // 重装部队 🛡️
+                tank: 60,    // 60%坦克
+                melee: 30,   // 30%近战
+                ranged: 10   // 10%远程
+            },
+            4: { // 法师军团 🔮
+                mage: 60,    // 60%法师
+                ranged: 25,  // 25%远程
+                melee: 15    // 15%近战
+            },
+            5: { // 混合军团 ⚔️🏹
+                melee: 40,   // 40%近战
+                ranged: 40,  // 40%远程
+                tank: 15,    // 15%坦克
+                mage: 5      // 5%法师
+            },
+            6: { // 精锐军团 🛡️⚔️
+                melee: 45,   // 45%近战
+                tank: 45,    // 45%坦克
+                ranged: 10   // 10%远程
+            },
+            7: { // 魔战军团 🔮⚔️
+                mage: 50,    // 50%法师
+                melee: 35,   // 35%近战
+                ranged: 15   // 15%远程
+            },
+            8: { // 守护军团 🏹🛡️
+                ranged: 45,  // 45%远程
+                tank: 45,    // 45%坦克
+                mage: 10     // 10%法师
+            },
+            9: { // 联合军团 ⚔️🔮🏹
+                melee: 35,   // 35%近战
+                mage: 35,    // 35%法师
+                ranged: 30   // 30%远程
+            },
+            10: { // 王牌军团 👑 (全兵种平衡但更强)
+                melee: 25,   // 25%近战
+                ranged: 25,  // 25%远程
+                tank: 25,    // 25%坦克
+                mage: 25     // 25%法师
+            }
+        };
+
+        const config = waveConfigs[this.wave] || waveConfigs[1];
+        
+        // 根据概率选择兵种
+        const rand = Utils.randomInt(1, 100);
+        let cumulative = 0;
+        
+        for (const [unitType, probability] of Object.entries(config)) {
+            cumulative += probability;
+            if (rand <= cumulative) {
+                return unitType;
+            }
+        }
+        
+        // 默认返回近战（不应该到达这里）
+        return 'melee';
     }
 
     updateUnits() {
@@ -329,21 +419,30 @@ class Game {
             this.enemyAI.spawnTimer = 0;
             this.spawnEnemyUnit();
             
-            // 根据波数调整AI策略
-            if (this.wave % 3 === 0) {
-                this.enemyAI.strategy = 'aggressive';
-                this.enemyAI.spawnInterval = 180; // 更快生产
-            } else if (this.wave % 5 === 0) {
-                this.enemyAI.strategy = 'defensive';
-                this.enemyAI.spawnInterval = 300; // 更慢但更强
-            } else {
-                this.enemyAI.strategy = 'balanced';
-                this.enemyAI.spawnInterval = 240;
-            }
+            // 根据波数设置生产间隔 - 渐进式加快
+            this.enemyAI.spawnInterval = this.getWaveSpawnInterval();
         }
         
         // 敌方也获得金币
         this.enemyGold += 1;
+    }
+
+    getWaveSpawnInterval() {
+        // 每波的生产间隔（帧数，60帧=1秒）
+        const spawnIntervals = {
+            1: 300,  // 5秒 - 开始
+            2: 270,  // 4.5秒
+            3: 240,  // 4秒 - 重装部队
+            4: 210,  // 3.5秒
+            5: 180,  // 3秒 - 混合军团
+            6: 150,  // 2.5秒 - 精锐军团
+            7: 120,  // 2秒 - 魔战军团
+            8: 90,   // 1.5秒 - 守护军团
+            9: 60,   // 1秒 - 联合军团
+            10: 30   // 0.5秒 - 王牌军团最快
+        };
+        
+        return spawnIntervals[this.wave] || 240; // 默认4秒
     }
 
 
@@ -394,7 +493,7 @@ class Game {
         }
         
         // 重置双方基地血量（基于新波数）
-        const newHealth = 100 + 100 * this.wave;
+        const newHealth = 50 + 50 * this.wave;
         this.playerBase.health = this.playerBase.maxHealth = newHealth;
         this.playerBase.wave = this.wave;
         this.enemyBase.health = this.enemyBase.maxHealth = newHealth;
@@ -411,8 +510,10 @@ class Game {
         // 显示新波次
         this.showWave(this.wave);
         
-        // 每波开始给予20金币
-        this.playerGold += 20;
+        // 每波开始给予6+6*波次数的金币
+        const waveGold = 6 + 6 * this.wave;
+        this.playerGold += waveGold;
+        console.log(`第${this.wave}波开始，获得${waveGold}金币`);
         
         // 重置商店刷新费用为1元
         this.inventorySystem.refreshCost = 1;

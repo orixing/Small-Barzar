@@ -11,6 +11,7 @@ class Unit {
         this.targetX = x;
         this.targetY = y;
         this.health = this.maxHealth = this.getMaxHealth();
+        this.shield = this.maxShield = this.getMaxShield();
         this.speed = this.getSpeed();
         this.attackPower = this.getAttackPower();
         this.attackRange = this.getAttackRange();
@@ -35,11 +36,43 @@ class Unit {
         return stats[this.type] || 100;
     }
 
+    getMaxShield() {
+        // 只有泰坦拥有护盾
+        if (this.itemId === 'titan') {
+            return 800;
+        }
+        return 0;
+    }
+
     getSpeed() {
-        // 速度系统重新设计：速度值 × 0.123 = 实际像素/帧
-        // 这样速度10的角色实际移动1.23像素/帧，10秒到达对面基地
-        const speedMultiplier = 0.123;
+        // 如果有具体的物品ID，使用具体的速度值
+        if (this.itemId) {
+            const specificSpeeds = {
+                // 近战单位
+                warrior: 10,    // 战士
+                assassin: 12,   // 刺客  
+                gladiator: 10,  // 角斗士
+                barbarian: 9,   // 野蛮人
+                giant: 6,       // 巨人
+                cavalry: 14,    // 骑兵 
+                militia: 9,     // 民兵团
+                swordmaster: 11,// 剑圣
+                titan: 3,       // 泰坦
+                
+                // 其他兵种
+                bow: 6,         // 弓箭手
+                staff: 7,       // 法师
+                shield: 4       // 盾兵
+            };
+            
+            if (specificSpeeds[this.itemId]) {
+                // 速度值 × 0.123 = 实际像素/帧 (参考设计文档)
+                return specificSpeeds[this.itemId] * 0.123;
+            }
+        }
         
+        // 备用方案：使用通用兵种类型速度
+        const speedMultiplier = 0.123;
         const speeds = {
             melee: 8,   // 8 × 0.123 ≈ 0.98像素/帧
             ranged: 6,  // 6 × 0.123 ≈ 0.74像素/帧  
@@ -52,6 +85,32 @@ class Unit {
     }
 
     getAttackPower() {
+        // 如果有具体的物品ID，使用具体的攻击力值
+        if (this.itemId) {
+            const specificAttackPower = {
+                // 近战单位
+                warrior: 30,     // 战士
+                assassin: 20,    // 刺客
+                gladiator: 40,   // 角斗士
+                barbarian: 40,   // 野蛮人
+                giant: 50,       // 巨人
+                cavalry: 60,     // 骑兵
+                militia: 20,     // 民兵团
+                swordmaster: 30, // 剑圣
+                titan: 150,      // 泰坦
+                
+                // 其他兵种
+                bow: 20,         // 弓箭手
+                staff: 35,       // 法师
+                shield: 20       // 盾牌
+            };
+            
+            if (specificAttackPower[this.itemId]) {
+                return specificAttackPower[this.itemId];
+            }
+        }
+
+        // 备用：使用通用类型攻击力
         const powers = {
             melee: 25,
             ranged: 20,
@@ -85,16 +144,18 @@ class Unit {
         // 如果有具体的物品ID，使用具体的基地伤害值
         if (this.itemId) {
             const specificBaseDamage = {
-                // 近战单位
-                warrior: 20,
-                assassin: 20,
-                gladiator: 20,
-                barbarian: 20,
-                giant: 50,
-                cavalry: 20,
-                militia: 15,
+                // 近战单位 - 按尺寸设计
+                warrior: 20,     // 小型
+                assassin: 20,    // 小型
+                gladiator: 20,   // 小型
+                barbarian: 20,   // 小型
+                giant: 40,       // 中型
+                cavalry: 40,     // 中型
+                militia: 20,     // 特殊：每个人20
+                swordmaster: 20, // 小型
+                titan: 60,       // 大型
                 
-                // 其他兵种
+                // 其他兵种 - 小型标准
                 bow: 20,
                 staff: 20,
                 shield: 20
@@ -122,11 +183,13 @@ class Unit {
                 // 近战单位
                 warrior: '⚔️',
                 assassin: '🥷',
-                gladiator: '🏺', 
-                barbarian: '🪓',
-                giant: '👹',
+                gladiator: '🪓', 
+                barbarian: '👹',
+                giant: '💪',
                 cavalry: '🐎',
                 militia: '👥',
+                swordmaster: '🥋',
+                titan: '🗿',
                 
                 // 其他兵种
                 bow: '🏹',
@@ -228,7 +291,7 @@ class Unit {
         
         // 造成伤害
         const damage = this.attackPower + Utils.randomInt(-5, 5);
-        this.target.takeDamage(damage);
+        this.target.takeDamage(damage, this);
 
         // 播放攻击效果
         Utils.playSound('attack');
@@ -245,16 +308,63 @@ class Unit {
         // 在实际游戏中可以添加更复杂的范围效果
     }
 
-    takeDamage(damage) {
-        this.health -= damage;
+    takeDamage(damage, attacker = null) {
+        let actualDamage = damage;
+        
+        // 巨人特殊能力：受到非近战伤害-40%
+        if (this.itemId === 'giant' && attacker && attacker.type !== 'melee') {
+            actualDamage = Math.floor(damage * 0.6); // 减免40%，只受60%伤害
+            console.log(`巨人单位受到非近战伤害减免: ${damage} -> ${actualDamage}`);
+        }
+        
+        // 护盾逻辑：护盾优先承受伤害
+        if (this.shield > 0) {
+            if (actualDamage >= this.shield) {
+                // 伤害超过护盾，护盾破碎，剩余伤害作用于血量
+                const remainingDamage = actualDamage - this.shield;
+                console.log(`泰坦护盾破碎！护盾吸收${this.shield}伤害，剩余${remainingDamage}伤害作用于血量`);
+                this.shield = 0;
+                this.health -= remainingDamage;
+                // 播放护盾破碎效果
+                this.triggerShieldBreak();
+            } else {
+                // 护盾完全吸收伤害
+                this.shield -= actualDamage;
+                console.log(`泰坦护盾吸收${actualDamage}伤害，剩余护盾: ${this.shield}`);
+                // 播放护盾受击效果
+                this.triggerShieldHit();
+                return; // 护盾吸收了所有伤害，不影响血量
+            }
+        } else {
+            // 没有护盾，直接扣血量
+            this.health -= actualDamage;
+        }
         
         if (this.health <= 0) {
             this.health = 0;
             this.alive = false;
+            
+            // 通知游戏系统有单位死亡（用于角斗士技能）
+            if (window.game && attacker) {
+                window.game.onEnemyKilled(this, attacker);
+            }
         }
 
         // 受伤效果
         Utils.vibrate(50);
+    }
+
+    // 护盾受击特效
+    triggerShieldHit() {
+        // 添加蓝色闪烁效果
+        this.shieldHitEffect = 10; // 10帧的蓝色闪烁
+    }
+
+    // 护盾破碎特效
+    triggerShieldBreak() {
+        // 添加护盾破碎动画效果
+        this.shieldBreakEffect = 20; // 20帧的破碎动画
+        Utils.playSound('shield_break'); // 护盾破碎音效
     }
 
     // 计算对基地的实际伤害 = 基地伤害 × 生命百分比
@@ -288,6 +398,11 @@ class Unit {
         // 绘制血条
         this.renderHealthBar(ctx);
 
+        // 绘制泰坦护盾光环特效（只在非战斗阶段显示）
+        if (this.itemId === 'titan' && this.shield > 0 && window.game && window.game.gamePhase !== 'battle') {
+            this.renderShieldAura(ctx);
+        }
+
         // 绘制选中框（如果是目标）
         if (this.target) {
             ctx.strokeStyle = this.team === 'player' ? '#4CAF50' : '#F44336';
@@ -302,22 +417,84 @@ class Unit {
         const barWidth = this.size * 1.2;
         const barHeight = 4;
         const barX = this.x - barWidth / 2;
-        const barY = this.y - this.size / 2 - 8;
+        let currentY = this.y - this.size / 2 - 8;
+
+        // 如果有护盾，绘制护盾条
+        if (this.maxShield > 0) {
+            const shieldPercent = this.shield / this.maxShield;
+            
+            // 护盾条背景
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(barX, currentY, barWidth, barHeight);
+            
+            // 护盾条
+            ctx.fillStyle = this.shieldHitEffect > 0 ? '#f1c40f' : '#f39c12'; // 受击时亮橙色，正常时橙色
+            ctx.fillRect(barX, currentY, barWidth * shieldPercent, barHeight);
+            
+            // 护盾条边框
+            ctx.strokeStyle = '#e67e22';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, currentY, barWidth, barHeight);
+            
+            // 更新Y坐标，为血条留空间
+            currentY += barHeight + 2;
+        }
 
         // 血条背景
         ctx.fillStyle = '#333';
-        ctx.fillRect(barX, barY, barWidth, barHeight);
+        ctx.fillRect(barX, currentY, barWidth, barHeight);
 
         // 血条
         const healthPercent = this.health / this.maxHealth;
         ctx.fillStyle = healthPercent > 0.6 ? '#4CAF50' : 
                        healthPercent > 0.3 ? '#FFA500' : '#F44336';
-        ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+        ctx.fillRect(barX, currentY, barWidth * healthPercent, barHeight);
 
         // 血条边框
         ctx.strokeStyle = '#666';
         ctx.lineWidth = 1;
-        ctx.strokeRect(barX, barY, barWidth, barHeight);
+        ctx.strokeRect(barX, currentY, barWidth, barHeight);
+
+        // 更新特效计时器
+        if (this.shieldHitEffect > 0) {
+            this.shieldHitEffect--;
+        }
+        if (this.shieldBreakEffect > 0) {
+            this.shieldBreakEffect--;
+        }
+    }
+
+    // 渲染泰坦护盾光环
+    renderShieldAura(ctx) {
+        const time = Date.now() * 0.005; // 缓慢旋转
+        const shieldStrength = this.shield / this.maxShield;
+        
+        // 护盾光环的透明度基于护盾剩余量
+        const alpha = 0.3 + (shieldStrength * 0.4);
+        
+        // 绘制外圈光环
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = '#f39c12';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.lineDashOffset = time * 10; // 旋转虚线
+        
+        const radius = this.size * 0.8;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // 如果护盾受击，绘制闪烁效果
+        if (this.shieldHitEffect > 0) {
+            ctx.globalAlpha = 0.6;
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, radius - 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
     }
 }
 
@@ -327,7 +504,7 @@ class Base {
         this.team = team;
         this.x = x;
         this.y = y;
-        this.health = this.maxHealth = 100 + 100 * wave;  // 100 + 100 × 波数
+        this.health = this.maxHealth = 50 + 50 * wave;  // 50 + 50 × 波数
         this.size = 50;
         this.alive = true;
         this.wave = wave;  // 记录当前波数
