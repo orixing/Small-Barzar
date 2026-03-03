@@ -270,6 +270,16 @@ class Game {
             this.canvas.height / 2 + Utils.randomInt(-30, 30)
         );
         
+        // 应用波次数值成长：每波×1.2倍数值（第1波=1.0倍，第2波=1.2倍，第3波=1.44倍...）
+        const waveMultiplier = Math.pow(1.2, this.wave - 1);
+        
+        // 增强怪物血量和攻击力
+        unit.health = Math.round(unit.health * waveMultiplier);
+        unit.maxHealth = unit.health;
+        unit.attackPower = Math.round(unit.attackPower * waveMultiplier);
+        
+        console.log(`第${this.wave}波敌人强化: ${waveMultiplier.toFixed(2)}倍 (血量:${unit.health}, 攻击:${unit.attackPower})`);
+        
         const cost = unit.getCost();
         if (this.enemyGold >= cost) {
             this.enemyGold -= cost;

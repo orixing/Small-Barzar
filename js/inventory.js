@@ -1266,6 +1266,13 @@ class InventorySystem {
         this.draggedFromSlot = slotIndex;
         this.draggedFromBackpackSlot = -1; // 确保不是从背包拖拽的
         
+        // 临时移除被拖拽的物品，为推挤计算腾出空间
+        const itemSize = item.template.size;
+        for (let i = 0; i < itemSize; i++) {
+            this.inventory[slotIndex + i] = null;
+        }
+        console.log(`开始拖拽: ${item.template.name} 从位置${slotIndex}临时移除`)
+        
         // 使用统一的拖拽图像创建
         this.createDragImage(e, item);
         
@@ -1281,8 +1288,55 @@ class InventorySystem {
     }
     
     handleInventoryDragEnd(e) {
-        // 简化版：不需要恢复，推挤已经完成
-        // 只清理拖拽状态
+        // 如果拖拽物品仍然存在（表示拖拽失败），需要恢复到原位置
+        if (this.draggedItem && this.draggedFromSlot !== -1) {
+            const originalSlot = this.draggedFromSlot;
+            const itemSize = this.draggedItem.template.size;
+            
+            // 检查原位置是否仍然空着
+            let canRestore = true;
+            for (let i = 0; i < itemSize; i++) {
+                if (this.inventory[originalSlot + i] !== null) {
+                    canRestore = false;
+                    break;
+                }
+            }
+            
+            if (canRestore) {
+                // 恢复物品到原位置
+                for (let i = 0; i < itemSize; i++) {
+                    if (i === 0) {
+                        this.inventory[originalSlot + i] = this.draggedItem;
+                    } else {
+                        this.inventory[originalSlot + i] = 'occupied';
+                    }
+                }
+                console.log(`拖拽失败，${this.draggedItem.template.name} 恢复到原位置${originalSlot}`);
+            } else {
+                // 原位置被占用，寻找其他位置
+                const newSlot = this.findNextEmptySlot(itemSize, 0);
+                if (newSlot !== -1) {
+                    for (let i = 0; i < itemSize; i++) {
+                        if (i === 0) {
+                            this.inventory[newSlot + i] = this.draggedItem;
+                        } else {
+                            this.inventory[newSlot + i] = 'occupied';
+                        }
+                    }
+                    console.log(`拖拽失败，${this.draggedItem.template.name} 恢复到新位置${newSlot}`);
+                } else {
+                    // 战斗区没空间，放到背包
+                    this.addItemToBackpackAutoSlot(this.draggedItem);
+                    console.log(`拖拽失败，${this.draggedItem.template.name} 被移到背包`);
+                }
+            }
+            
+            // 更新显示
+            this.updateInventoryDisplay();
+            this.updateBackpackDisplay();
+        }
+        
+        // 清理UI状态
         const slots = document.querySelectorAll('.inventory-slot');
         slots.forEach(slot => {
             slot.style.opacity = '';
@@ -2386,6 +2440,13 @@ class InventorySystem {
         this.draggedFromBackpackSlot = slotIndex;
         this.draggedFromSlot = -1;
         
+        // 临时移除被拖拽的物品，为推挤计算腾出空间
+        const itemSize = item.template.size;
+        for (let i = 0; i < itemSize; i++) {
+            this.backpack[slotIndex + i] = null;
+        }
+        console.log(`开始拖拽背包物品: ${item.template.name} 从位置${slotIndex}临时移除`);
+        
         console.log('Drag state:', {
             draggedItem: this.draggedItem,
             draggedFromBackpackSlot: this.draggedFromBackpackSlot,
@@ -2397,13 +2458,9 @@ class InventorySystem {
         this.createDragImage(e, item);
         console.log('Drag image created');
         
-        // 立即从背包移除物品
-        this.removeItemFromBackpack(slotIndex);
-        console.log('Item removed from backpack, backpack state:', this.backpack);
-        
         // 延迟更新显示，避免中断拖拽
         setTimeout(() => {
-            this.updateBackpackDisplayOnly();
+            this.updateBackpackDisplay();
         }, 50);
         
         e.dataTransfer.effectAllowed = 'move';
@@ -2412,11 +2469,37 @@ class InventorySystem {
     }
     
     handleBackpackDragEnd(e) {
-        // 如果拖拽的物品还存在，说明拖拽失败，需要放回原位置
+        // 如果拖拽物品仍然存在（表示拖拽失败），需要恢复到背包原位置
         if (this.draggedItem && this.draggedFromBackpackSlot !== -1) {
-            console.log('Drag failed, restoring item to backpack position:', this.draggedFromBackpackSlot);
-            // 将物品放回背包原位置
-            this.addItemToBackpackAtSlot(this.draggedItem, this.draggedFromBackpackSlot);
+            const originalSlot = this.draggedFromBackpackSlot;
+            const itemSize = this.draggedItem.template.size;
+            
+            // 检查背包原位置是否仍然空着
+            let canRestore = true;
+            for (let i = 0; i < itemSize; i++) {
+                if (this.backpack[originalSlot + i] !== null) {
+                    canRestore = false;
+                    break;
+                }
+            }
+            
+            if (canRestore) {
+                // 恢复物品到背包原位置
+                for (let i = 0; i < itemSize; i++) {
+                    if (i === 0) {
+                        this.backpack[originalSlot + i] = this.draggedItem;
+                    } else {
+                        this.backpack[originalSlot + i] = 'occupied';
+                    }
+                }
+                console.log(`背包拖拽失败，${this.draggedItem.template.name} 恢复到原位置${originalSlot}`);
+            } else {
+                // 原位置被占用，寻找背包中其他位置
+                this.addItemToBackpackAutoSlot(this.draggedItem);
+                console.log(`背包拖拽失败，${this.draggedItem.template.name} 恢复到背包其他位置`);
+            }
+            
+            // 更新显示
             this.updateBackpackDisplay();
         }
         
