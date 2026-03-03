@@ -1134,16 +1134,22 @@ class InventorySystem {
                             return;
                         }
                         
-                        // 执行推挤操作
-                        this.pushItemsAway(index, draggedSize);
+                        // 尝试执行推挤操作
+                        const canPush = this.pushItemsAway(index, draggedSize);
                         
-                        // 高亮目标区域
-                        this.highlightSlots(index, draggedSize, true);
-                        e.dataTransfer.dropEffect = 'move';
+                        if (canPush) {
+                            // 推挤成功，高亮目标区域
+                            this.highlightSlots(index, draggedSize, true);
+                            e.dataTransfer.dropEffect = 'move';
+                        } else {
+                            // 推挤失败，不允许放置
+                            e.dataTransfer.dropEffect = 'none';
+                        }
                     }
-                    // 处理商店物品拖拽（同样有实时推挤效果）
+                    // 处理商店物品拖拽
                     else if (this.draggedShopItem) {
-                        const draggedSize = this.draggedShopItem.item.template.size;
+                        const shopItem = this.draggedShopItem.item;
+                        const draggedSize = shopItem.template.size;
                         
                         // 检查是否超出边界
                         if (index + draggedSize > this.inventory.length) {
@@ -1151,12 +1157,29 @@ class InventorySystem {
                             return;
                         }
                         
-                        // 执行推挤操作
-                        this.pushItemsAway(index, draggedSize);
+                        // 检查是否是升级操作
+                        const existingItemIndex = this.findExistingItem(shopItem.id, shopItem.quality);
+                        const isUpgrade = existingItemIndex !== -1;
                         
-                        // 高亮目标区域
-                        this.highlightSlots(index, draggedSize, true);
-                        e.dataTransfer.dropEffect = 'move';
+                        if (isUpgrade) {
+                            // 如果是升级操作，不执行推挤，只高亮现有物品
+                            this.clearAllHighlights();
+                            const existingSlot = document.querySelector(`[data-slot="${existingItemIndex}"]`);
+                            if (existingSlot) {
+                                existingSlot.classList.add('drag-over');
+                            }
+                            e.dataTransfer.dropEffect = 'copy'; // 使用copy图标表示升级
+                        } else {
+                            // 不是升级，尝试执行推挤操作
+                            const canPush = this.pushItemsAway(index, draggedSize);
+                            if (canPush) {
+                                this.highlightSlots(index, draggedSize, true);
+                                e.dataTransfer.dropEffect = 'move';
+                            } else {
+                                // 推挤失败，不允许放置
+                                e.dataTransfer.dropEffect = 'none';
+                            }
+                        }
                     }
                 });
                 
@@ -1625,7 +1648,7 @@ class InventorySystem {
         return true;
     }
     
-    // 简单推挤：直接把冲突物品推到右边
+    // 智能推挤：在战斗区内重新排列物品，不会推到背包
     pushItemsAway(targetSlot, itemSize) {
         console.log(`推挤操作: 目标位置${targetSlot}, 需要${itemSize}个格子`);
         
@@ -1653,14 +1676,18 @@ class InventorySystem {
             }
         }
         
-        // 清除被推挤的物品
+        // 先检查所有被推挤的物品是否都能找到战斗区内的新位置
+        const pushPlan = [];
+        let canPushAll = true;
+        
+        // 临时清除被推挤的物品以便搜索空位
         for (const pushItem of itemsToPush) {
             for (let i = 0; i < pushItem.size; i++) {
                 this.inventory[pushItem.startSlot + i] = null;
             }
         }
         
-        // 为每个被推开的物品找新位置（双向搜索）
+        // 为每个物品找新位置
         for (const pushItem of itemsToPush) {
             // 双向搜索：右侧优先，然后左侧
             const rightSlot = this.findNextEmptySlot(pushItem.size, targetSlot + itemSize);
@@ -1670,25 +1697,71 @@ class InventorySystem {
             const newSlot = this.chooseBetterSlot(rightSlot, leftSlot, pushItem.startSlot, targetSlot);
             
             if (newSlot !== -1) {
-                // 放置到新位置
+                // 记录推挤计划
+                pushPlan.push({
+                    item: pushItem,
+                    newSlot: newSlot
+                });
+                
+                // 临时占用新位置，以便后续物品搜索时避开
                 for (let i = 0; i < pushItem.size; i++) {
+                    this.inventory[newSlot + i] = 'temp_occupied';
+                }
+            } else {
+                // 有物品无法在战斗区内找到新位置
+                canPushAll = false;
+                console.log(`${pushItem.item.template.name} 在战斗区内找不到空间，推挤失败`);
+                break;
+            }
+        }
+        
+        if (canPushAll) {
+            // 所有物品都能找到位置，执行推挤计划
+            // 先清理临时占用标记
+            for (let i = 0; i < this.inventory.length; i++) {
+                if (this.inventory[i] === 'temp_occupied') {
+                    this.inventory[i] = null;
+                }
+            }
+            
+            // 执行推挤
+            for (const plan of pushPlan) {
+                for (let i = 0; i < plan.item.size; i++) {
                     if (i === 0) {
-                        this.inventory[newSlot + i] = pushItem.item;
+                        this.inventory[plan.newSlot + i] = plan.item.item;
                     } else {
-                        this.inventory[newSlot + i] = 'occupied';
+                        this.inventory[plan.newSlot + i] = 'occupied';
                     }
                 }
-                console.log(`${pushItem.item.template.name} 从位置${pushItem.startSlot}推到位置${newSlot}`);
-            } else {
-                // 战斗区左右都没空间，推到背包
-                console.log(`${pushItem.item.template.name} 战斗区无空间，推到背包`);
-                this.addItemToBackpackAutoSlot(pushItem.item);
+                console.log(`${plan.item.item.template.name} 从位置${plan.item.startSlot}推到位置${plan.newSlot}`);
             }
+        } else {
+            // 无法推挤所有物品，恢复原状
+            // 先清理临时占用标记
+            for (let i = 0; i < this.inventory.length; i++) {
+                if (this.inventory[i] === 'temp_occupied') {
+                    this.inventory[i] = null;
+                }
+            }
+            
+            // 恢复所有物品到原位置
+            for (const pushItem of itemsToPush) {
+                for (let i = 0; i < pushItem.size; i++) {
+                    if (i === 0) {
+                        this.inventory[pushItem.startSlot + i] = pushItem.item;
+                    } else {
+                        this.inventory[pushItem.startSlot + i] = 'occupied';
+                    }
+                }
+            }
+            console.log('推挤失败：战斗区空间不足，物品已恢复原位置');
         }
         
         // 立即更新显示
         this.updateInventoryDisplay();
         this.updateBackpackDisplay();
+        
+        return canPushAll; // 返回推挤是否成功
     }
     
     // 找到物品的起始位置
