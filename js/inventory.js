@@ -801,8 +801,53 @@ class InventorySystem {
                 // 自动找位置放入
                 this.addItemToInventory(item);
             } else {
-                // 完全没有空位，购买失败
-                return;
+                // 战斗区没有空位，尝试放入背包
+                const hasBackpackSpace = this.canFitItemInBackpack(template.size);
+                
+                if (hasBackpackSpace) {
+                    this.game.playerGold -= itemPrice;
+                    
+                    // 忍者特殊技能：如果购买的是近战物品，先给所有忍者加攻击力
+                    if (template.unitType === 'melee') {
+                        this.boostAssassinAttack();
+                    }
+                    
+                    // 创建物品实例
+                    const item = {
+                        id: shopItem.id,
+                        template: template,
+                        quality: shopItem.quality,
+                        cooldownRemaining: 0, // 先设为0，后面会更新
+                        isReady: false, // 进度条始终为0
+                        attackBonus: 0, // 通用攻击力加成（宝剑等物品会修改这个值）
+                        cooldownReduction: 0 // 冷却时间减少（徽章等物品会修改这个值）
+                    };
+                    
+                    // 计算实际的冷却时间（考虑升级效果）
+                    const actualCooldown = this.getActualCooldown(item);
+                    item.cooldownRemaining = actualCooldown;
+                    
+                    // 为野蛮人计算品质攻击力加成（相对于起始品质）
+                    if (item.id === 'barbarian') {
+                        const qualityLevelsAboveMin = item.quality - template.minQuality;
+                        item.barbarianBonus = qualityLevelsAboveMin * 30; // 每提升一个品质+30攻击力
+                    }
+                    
+                    // 为巨人计算品质生命值加成（相对于起始品质）
+                    if (item.id === 'giant') {
+                        const qualityLevelsAboveMin = item.quality - template.minQuality;
+                        item.giantHealthBonus = qualityLevelsAboveMin * 100; // 每提升一个品质+100生命值
+                    }
+                    
+                    // 自动找位置放入背包
+                    this.addItemToBackpackAutoSlot(item);
+                    
+                    console.log('战斗区满了，物品已放入背包');
+                } else {
+                    // 战斗区和背包都没有空位，购买失败
+                    console.log('战斗区和背包都满了，无法购买');
+                    return;
+                }
             }
         }
         
@@ -812,6 +857,7 @@ class InventorySystem {
         // 更新显示
         this.updateShopDisplay();
         this.updateInventoryDisplay();
+        this.updateBackpackDisplay(); // 也要更新背包显示
         this.game.updateUI();
         
         Utils.playSound('purchase');
@@ -1324,8 +1370,15 @@ class InventorySystem {
                         // 如果能升级现有物品或者有空位放新物品，就购买
                         if (canAfford && (existingItemIndex !== -1 || canFit)) {
                             this.buyItem(this.draggedShopItem.index);
+                        } else if (canAfford && existingItemIndex === -1 && !canFit) {
+                            // 战斗区满了且无可升级物品，尝试放入背包
+                            const hasBackpackSpace = this.canFitItemInBackpack(shopItem.template.size);
+                            if (hasBackpackSpace) {
+                                this.buyItemToBackpackAuto(this.draggedShopItem.index);
+                                console.log('战斗区满了，物品已自动放入背包');
+                            }
+                            // 如果背包也满了，什么都不做
                         }
-                        // 如果没有空位且没有可升级物品，什么都不做
                     }
                 }
             });
@@ -3442,6 +3495,109 @@ class InventorySystem {
         
         // 更新显示
         this.updateInventoryDisplay();
+    }
+    
+    // 购买物品到背包（自动找位置版本）
+    buyItemToBackpackAuto(shopIndex) {
+        const shopItem = this.shopItems[shopIndex];
+        if (!shopItem || !shopItem.available) return;
+        
+        const template = shopItem.template;
+        const itemPrice = this.getItemPrice(template, shopItem.quality);
+        const canAfford = this.game.playerGold >= itemPrice;
+        
+        if (!canAfford) return; // 买不起直接返回
+        
+        // 先检查背包是否已有相同物品，如果是则升级
+        const existingItemIndex = this.findExistingItemInBackpack(shopItem.id, shopItem.quality);
+        
+        if (existingItemIndex !== -1) {
+            // 升级现有物品品质
+            const existingItem = this.backpack[existingItemIndex];
+            if (existingItem.quality < this.qualitySystem.qualities.length - 1) {
+                existingItem.quality++;
+            }
+            
+            // 忍者特殊技能：如果购买的是近战物品，先给所有忍者加攻击力
+            if (template.unitType === 'melee') {
+                this.boostAssassinAttack();
+            }
+            
+            // 扣除金币
+            this.game.playerGold -= itemPrice;
+            
+            // 标记为已售出
+            shopItem.available = false;
+            
+            // 更新显示
+            this.updateShopDisplay();
+            this.updateBackpackDisplay();
+            this.game.updateUI();
+            
+            Utils.playSound('purchase');
+            return;
+        }
+        
+        // 没有相同物品，尝试新放置
+        const hasBackpackSpace = this.canFitItemInBackpack(template.size);
+        
+        if (hasBackpackSpace) {
+            this.game.playerGold -= itemPrice;
+            
+            // 忍者特殊技能：如果购买的是近战物品，先给所有忍者加攻击力
+            if (template.unitType === 'melee') {
+                this.boostAssassinAttack();
+            }
+            
+            // 添加新物品到背包（自动找位置）
+            const newItem = {
+                id: shopItem.id,
+                template: template,
+                quality: shopItem.quality,
+                cooldownRemaining: 0, // 先设为0，后面会更新
+                isReady: false, // 进度条始终为0
+                attackBonus: 0, // 通用攻击力加成（宝剑等物品会修改这个值）
+                cooldownReduction: 0, // 冷却时间减少（徽章等物品会修改这个值）
+                meleeBonus: 0, // 忍者特殊技能：近战攻击力加成
+                militiaBonus: 0, // 民兵团特殊技能：额外单位计数器
+                barbarianBonus: 0, // 野蛮人特殊技能：品质攻击力加成
+                gladiatorBonus: 0, // 角斗士特殊技能：战斗攻击力加成
+                giantHealthBonus: 0, // 巨人升级效果：品质生命值加成
+                swordmasterBonus: 0 // 剑圣特殊技能：相邻召唤攻击力加成
+            };
+            
+            // 计算实际的冷却时间（考虑升级效果）
+            const actualCooldown = this.getActualCooldown(newItem);
+            newItem.cooldownRemaining = actualCooldown;
+            
+            // 为野蛮人计算品质攻击力加成（相对于起始品质）
+            if (newItem.id === 'barbarian') {
+                const qualityLevelsAboveMin = newItem.quality - template.minQuality;
+                newItem.barbarianBonus = qualityLevelsAboveMin * 30; // 每提升一个品质+30攻击力
+            }
+            
+            // 为巨人计算品质生命值加成（相对于起始品质）
+            if (newItem.id === 'giant') {
+                const qualityLevelsAboveMin = newItem.quality - template.minQuality;
+                newItem.giantHealthBonus = qualityLevelsAboveMin * 100; // 每提升一个品质+100生命值
+            }
+            
+            this.addItemToBackpackAutoSlot(newItem);
+            
+            // 标记为已售出
+            shopItem.available = false;
+            
+            // 更新显示
+            this.updateShopDisplay();
+            this.updateBackpackDisplay();
+            this.game.updateUI();
+            
+            Utils.playSound('purchase');
+        } else {
+            // 背包完全没有空位，购买失败
+            console.log('背包也满了，无法购买');
+            return;
+        }
     }
     
 }
