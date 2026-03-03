@@ -1104,6 +1104,9 @@ class InventorySystem {
         this.draggedItem = null;
         this.draggedFromSlot = -1;
         this.draggedFromBackpackSlot = -1;
+        this.originalLayout = null; // 保存原始布局用于恢复
+        this.currentHoverSlot = -1; // 当前悬停的槽位
+        this.isPushing = false; // 是否正在推挤状态
         
         // 为每个战斗区槽位设置拖拽事件  
         const updateSlotEvents = () => {
@@ -1113,14 +1116,46 @@ class InventorySystem {
                 // 设置原生拖拽事件
                 slot.addEventListener('dragover', (e) => {
                     e.preventDefault();
-                    // 处理背包内物品拖拽
-                    if (this.draggedItem && this.canDropAt(index, this.draggedItem.template.size)) {
-                        this.highlightSlots(index, this.draggedItem.template.size, true);
+                    
+                    // 避免重复处理同一个位置
+                    if (this.currentHoverSlot === index) {
+                        return;
+                    }
+                    
+                    this.currentHoverSlot = index;
+                    
+                    // 处理物品拖拽（战斗区内移动或从背包拖拽）
+                    if (this.draggedItem) {
+                        const draggedSize = this.draggedItem.template.size;
+                        
+                        // 检查是否超出边界
+                        if (index + draggedSize > this.inventory.length) {
+                            e.dataTransfer.dropEffect = 'none';
+                            return;
+                        }
+                        
+                        // 执行推挤操作
+                        this.pushItemsAway(index, draggedSize);
+                        
+                        // 高亮目标区域
+                        this.highlightSlots(index, draggedSize, true);
                         e.dataTransfer.dropEffect = 'move';
                     }
-                    // 处理商店物品拖拽
-                    else if (this.draggedShopItem && this.canDropAt(index, this.draggedShopItem.item.template.size)) {
-                        this.highlightSlots(index, this.draggedShopItem.item.template.size, true);
+                    // 处理商店物品拖拽（同样有实时推挤效果）
+                    else if (this.draggedShopItem) {
+                        const draggedSize = this.draggedShopItem.item.template.size;
+                        
+                        // 检查是否超出边界
+                        if (index + draggedSize > this.inventory.length) {
+                            e.dataTransfer.dropEffect = 'none';
+                            return;
+                        }
+                        
+                        // 执行推挤操作
+                        this.pushItemsAway(index, draggedSize);
+                        
+                        // 高亮目标区域
+                        this.highlightSlots(index, draggedSize, true);
                         e.dataTransfer.dropEffect = 'move';
                     }
                 });
@@ -1133,34 +1168,47 @@ class InventorySystem {
                     e.preventDefault();
                     this.clearAllHighlights();
                     
-                    // 处理战斗区内物品移动
-                    if (this.draggedItem && this.draggedFromSlot !== -1) {
-                        // 检查目标位置是否可以放置
-                        if (this.canDropAt(index, this.draggedItem.template.size)) {
-                            // 直接在目标位置放置物品
-                            this.addItemToInventoryAtSlot(this.draggedItem, index);
-                            this.updateInventoryDisplay();
+                    // 处理战斗区内物品移动和从背包拖拽
+                    if (this.draggedItem && (this.draggedFromSlot !== -1 || this.draggedFromBackpackSlot !== -1)) {
+                        // 推挤已经在dragover时完成，直接放置物品即可
+                        const draggedSize = this.draggedItem.template.size;
+                        
+                        // 检查目标位置是否有空间（推挤后应该有空间）
+                        let canPlace = true;
+                        for (let i = 0; i < draggedSize; i++) {
+                            if (index + i >= this.inventory.length || this.inventory[index + i] !== null) {
+                                canPlace = false;
+                                break;
+                            }
+                        }
+                        
+                        if (canPlace) {
+                            // 直接放置拖拽的物品
+                            for (let i = 0; i < draggedSize; i++) {
+                                if (i === 0) {
+                                    this.inventory[index + i] = this.draggedItem;
+                                } else {
+                                    this.inventory[index + i] = 'occupied';
+                                }
+                            }
                             
-                            // 清除拖拽数据，表示成功放置
+                            console.log(`物品${this.draggedItem.template.name}放置到位置${index}`);
+                            
+                            // 更新显示
+                            this.updateInventoryDisplay();
+                            this.updateBackpackDisplay();
+                            
+                            // 清除拖拽状态
                             this.draggedItem = null;
                             this.draggedFromSlot = -1;
-                        }
-                    }
-                    // 处理从背包拖拽到战斗区
-                    else if (this.draggedItem && this.draggedFromBackpackSlot !== -1) {
-                        // 检查目标位置是否可以放置
-                        if (this.canDropAt(index, this.draggedItem.template.size)) {
-                            // 将物品从背包移动到战斗区
-                            this.moveItemFromBackpackToInventory(this.draggedFromBackpackSlot, index);
-                            
-                            // 清除拖拽数据
-                            this.draggedItem = null;
                             this.draggedFromBackpackSlot = -1;
+                            this.currentHoverSlot = -1;
                         }
                     }
-                    // 处理商店物品放置到特定位置
+                    // 处理商店物品放置（保持原逻辑）
                     else if (this.draggedShopItem) {
                         this.buyItemAtSlot(this.draggedShopItem.index, index);
+                        this.currentHoverSlot = -1;
                     }
                 });
             });
@@ -1210,14 +1258,8 @@ class InventorySystem {
     }
     
     handleInventoryDragEnd(e) {
-        // 如果拖拽的物品还存在，说明拖拽失败，需要放回原位置
-        if (this.draggedItem && this.draggedFromSlot !== -1) {
-            // 将物品放回原位置
-            this.addItemToInventoryAtSlot(this.draggedItem, this.draggedFromSlot);
-            this.updateInventoryDisplay();
-        }
-        
-        // 清理拖拽状态
+        // 简化版：不需要恢复，推挤已经完成
+        // 只清理拖拽状态
         const slots = document.querySelectorAll('.inventory-slot');
         slots.forEach(slot => {
             slot.style.opacity = '';
@@ -1226,8 +1268,13 @@ class InventorySystem {
         // 清除所有高亮
         this.clearAllHighlights();
         
+        // 重置状态
         this.draggedItem = null;
         this.draggedFromSlot = -1;
+        this.draggedFromBackpackSlot = -1;
+        this.currentHoverSlot = -1;
+        
+        console.log('拖拽结束，状态已清理');
     }
     
     createDragImage(e, item, isShopItem = false) {
@@ -1576,6 +1623,149 @@ class InventorySystem {
             }
         }
         return true;
+    }
+    
+    // 简单推挤：直接把冲突物品推到右边
+    pushItemsAway(targetSlot, itemSize) {
+        console.log(`推挤操作: 目标位置${targetSlot}, 需要${itemSize}个格子`);
+        
+        // 收集需要推开的物品
+        const itemsToPush = [];
+        
+        for (let i = 0; i < itemSize; i++) {
+            const checkSlot = targetSlot + i;
+            if (checkSlot >= this.inventory.length) break;
+            
+            const item = this.inventory[checkSlot];
+            if (item && item !== 'occupied') {
+                // 找到完整物品的起始位置和大小
+                const itemStart = this.findItemStart(checkSlot);
+                const fullItem = this.inventory[itemStart];
+                
+                // 避免重复添加同一个物品
+                if (!itemsToPush.some(pushItem => pushItem.startSlot === itemStart)) {
+                    itemsToPush.push({
+                        item: fullItem,
+                        startSlot: itemStart,
+                        size: fullItem.template.size
+                    });
+                }
+            }
+        }
+        
+        // 清除被推挤的物品
+        for (const pushItem of itemsToPush) {
+            for (let i = 0; i < pushItem.size; i++) {
+                this.inventory[pushItem.startSlot + i] = null;
+            }
+        }
+        
+        // 为每个被推开的物品找新位置（双向搜索）
+        for (const pushItem of itemsToPush) {
+            // 双向搜索：右侧优先，然后左侧
+            const rightSlot = this.findNextEmptySlot(pushItem.size, targetSlot + itemSize);
+            const leftSlot = this.findPreviousEmptySlot(pushItem.size, targetSlot - 1);
+            
+            // 选择最优位置
+            const newSlot = this.chooseBetterSlot(rightSlot, leftSlot, pushItem.startSlot, targetSlot);
+            
+            if (newSlot !== -1) {
+                // 放置到新位置
+                for (let i = 0; i < pushItem.size; i++) {
+                    if (i === 0) {
+                        this.inventory[newSlot + i] = pushItem.item;
+                    } else {
+                        this.inventory[newSlot + i] = 'occupied';
+                    }
+                }
+                console.log(`${pushItem.item.template.name} 从位置${pushItem.startSlot}推到位置${newSlot}`);
+            } else {
+                // 战斗区左右都没空间，推到背包
+                console.log(`${pushItem.item.template.name} 战斗区无空间，推到背包`);
+                this.addItemToBackpackAutoSlot(pushItem.item);
+            }
+        }
+        
+        // 立即更新显示
+        this.updateInventoryDisplay();
+        this.updateBackpackDisplay();
+    }
+    
+    // 找到物品的起始位置
+    findItemStart(slotIndex) {
+        // 向左搜索直到找到实际物品（不是'occupied'）
+        for (let i = slotIndex; i >= 0; i--) {
+            const item = this.inventory[i];
+            if (item && item !== 'occupied') {
+                return i;
+            }
+        }
+        return slotIndex;
+    }
+    
+    // 从指定位置开始查找空位
+    findNextEmptySlot(itemSize, startFrom) {
+        for (let i = startFrom; i <= this.inventory.length - itemSize; i++) {
+            let isEmpty = true;
+            for (let j = 0; j < itemSize; j++) {
+                if (this.inventory[i + j] !== null) {
+                    isEmpty = false;
+                    break;
+                }
+            }
+            if (isEmpty) {
+                return i;
+            }
+        }
+        return -1; // 找不到空位
+    }
+    
+    // 从指定位置向左查找空位
+    findPreviousEmptySlot(itemSize, endAt) {
+        for (let i = endAt - itemSize + 1; i >= 0; i--) {
+            let isEmpty = true;
+            for (let j = 0; j < itemSize; j++) {
+                if (this.inventory[i + j] !== null) {
+                    isEmpty = false;
+                    break;
+                }
+            }
+            if (isEmpty) {
+                return i;
+            }
+        }
+        return -1; // 找不到空位
+    }
+    
+    // 选择更优的槽位位置
+    chooseBetterSlot(rightSlot, leftSlot, originalSlot, targetSlot) {
+        // 如果只有一个有效选项，返回它
+        if (rightSlot !== -1 && leftSlot === -1) {
+            return rightSlot;
+        }
+        if (leftSlot !== -1 && rightSlot === -1) {
+            return leftSlot;
+        }
+        if (rightSlot === -1 && leftSlot === -1) {
+            return -1;
+        }
+        
+        // 两个选项都有效，选择距离原位置更近的
+        const rightDistance = Math.abs(rightSlot - originalSlot);
+        const leftDistance = Math.abs(leftSlot - originalSlot);
+        
+        // 优先选择距离更近的位置
+        if (leftDistance < rightDistance) {
+            console.log(`选择左侧位置${leftSlot}（距离${leftDistance}）而非右侧位置${rightSlot}（距离${rightDistance}）`);
+            return leftSlot;
+        } else if (rightDistance < leftDistance) {
+            console.log(`选择右侧位置${rightSlot}（距离${rightDistance}）而非左侧位置${leftSlot}（距离${leftDistance}）`);
+            return rightSlot;
+        } else {
+            // 距离相等时，优先选择右侧（保持原有行为）
+            console.log(`距离相等，选择右侧位置${rightSlot}`);
+            return rightSlot;
+        }
     }
     
     moveItem(fromSlot, toSlot) {
@@ -3447,32 +3637,8 @@ class InventorySystem {
     
     // 添加测试单位到战斗区和背包
     addTestUnits() {
-        // 在背包中添加一个初始泰坦
-        const titanTemplate = this.itemTemplates.titan;
-        const titanItem = {
-            id: 'titan',
-            template: titanTemplate,
-            quality: titanTemplate.minQuality, // 橙色品质
-            cooldownRemaining: 0,
-            isReady: false,
-            attackBonus: 0,
-            cooldownReduction: 0,
-            meleeBonus: 0,
-            militiaBonus: 0,
-            barbarianBonus: 0,
-            accelerationTime: 0
-        };
-
-        // 计算实际的冷却时间
-        const actualCooldown = this.getActualCooldown(titanItem);
-        titanItem.cooldownRemaining = actualCooldown;
-
-        // 将泰坦放到背包第一个位置（大小为3，占用0,1,2位置）
-        this.backpack[0] = titanItem;
-        this.backpack[1] = 'occupied';
-        this.backpack[2] = 'occupied';
-
-        console.log('游戏开始：背包中已添加一个泰坦');
+        // 游戏开始时战斗区和背包都为空
+        console.log('游戏开始：战斗区和背包为空');
     }
     
     // 战旗特殊能力：全场近战单位加速2秒
