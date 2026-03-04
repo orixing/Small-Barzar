@@ -1144,6 +1144,18 @@ html, body {
     text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
 }
 
+/* 技能描述中的魔法标签样式 */
+.mage-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
 .shop-info-header {
     display: flex;
     align-items: center;

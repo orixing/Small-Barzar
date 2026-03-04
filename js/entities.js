@@ -62,7 +62,11 @@ class Unit {
                 // 其他兵种
                 bow: 6,         // 弓箭手
                 staff: 7,       // 法师
-                shield: 4       // 盾兵
+                shield: 4,      // 盾兵
+                
+                // 魔法单位
+                apprentice: 8,  // 学徒
+                waterElemental: 10  // 水元素
             };
             
             if (specificSpeeds[this.itemId]) {
@@ -102,7 +106,11 @@ class Unit {
                 // 其他兵种
                 bow: 20,         // 弓箭手
                 staff: 35,       // 法师
-                shield: 20       // 盾牌
+                shield: 20,      // 盾牌
+                
+                // 魔法单位
+                apprentice: 20,  // 学徒
+                waterElemental: 40  // 水元素
             };
             
             if (specificAttackPower[this.itemId]) {
@@ -158,7 +166,11 @@ class Unit {
                 // 其他兵种 - 小型标准
                 bow: 20,
                 staff: 20,
-                shield: 20
+                shield: 20,
+                
+                // 魔法单位
+                apprentice: 20,     // 小型
+                waterElemental: 40  // 中型
             };
             
             if (specificBaseDamage[this.itemId]) {
@@ -194,7 +206,11 @@ class Unit {
                 // 其他兵种
                 bow: '🏹',
                 staff: '🔮',
-                shield: '🛡️'
+                shield: '🛡️',
+                
+                // 魔法单位
+                apprentice: '🧝‍♂️',
+                waterElemental: '🌊'
             };
             
             if (specificIcons[this.itemId]) {

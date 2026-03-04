@@ -107,6 +107,9 @@ class Game {
         this.playerUnits = [];
         this.enemyUnits = [];
         
+        // 法杖成长：战斗胜利时增强
+        this.inventorySystem.onBattleVictory();
+        
         // 重置所有物品的进度条为0
         this.inventorySystem.resetAllItemCooldowns();
         
