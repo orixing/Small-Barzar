@@ -7,7 +7,7 @@ class Game {
         // 游戏状态
         this.gameState = 'playing'; // 'playing', 'paused', 'gameover'
         this.gamePhase = 'preparation'; // 'preparation', 'battle'
-        this.playerGold = 12; // 第1波的金币：6+6*1=12
+        this.playerGold = 12; // 初始金币12
         this.enemyGold = 200; // 降低第1关敌人初始金币
         this.wave = 1;
         this.showWaveInfo = false;
@@ -548,8 +548,8 @@ class Game {
         // 显示新波次
         this.showWave(this.wave);
         
-        // 每波开始给予6+6*波次数的金币
-        const waveGold = 6 + 6 * this.wave;
+        // 每波开始给予5*波次数的金币
+        const waveGold = 5 * this.wave;
         this.playerGold += waveGold;
         console.log(`第${this.wave}波开始，获得${waveGold}金币`);
         

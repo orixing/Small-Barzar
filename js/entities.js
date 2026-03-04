@@ -187,7 +187,7 @@ class Unit {
                 barbarian: '👹',
                 giant: '💪',
                 cavalry: '🐎',
-                militia: '👥',
+                militia: '👪',
                 swordmaster: '🥋',
                 titan: '🗿',
                 

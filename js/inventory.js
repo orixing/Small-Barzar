@@ -42,7 +42,7 @@ class InventorySystem {
                 unitCount: 1,
                 cooldown: 300, // 5秒 
                 minQuality: 1, // 绿品质起始
-                description: '基础近战战士'
+                description: '均衡可靠的基础战士'
             },
             assassin: {
                 name: '忍者',
@@ -53,7 +53,7 @@ class InventorySystem {
                 unitCount: 1,
                 cooldown: 300, // 5秒
                 minQuality: 1, // 绿品质起始
-                description: '忍者的攻击力+2'
+                description: '购买近战单位时自我强化'
             },
             gladiator: {
                 name: '狂战士',
@@ -64,7 +64,7 @@ class InventorySystem {
                 unitCount: 1,
                 cooldown: 480, // 8秒
                 minQuality: 3, // 紫品质起始
-                description: '高级近战战士'
+                description: '击杀敌人时获得攻击力加成'
             },
             barbarian: {
                 name: '野蛮人',
@@ -74,8 +74,8 @@ class InventorySystem {
                 unitType: 'melee',
                 unitCount: 1,
                 cooldown: 300, // 5秒
-                minQuality: 2, // 蓝品质起始
-                description: '快速召唤的野蛮战士'
+                minQuality: 1, // 绿品质起始
+                description: '相邻近战物品攻击力+10'
             },
             
             // 中尺寸近战单位 (2x1)
@@ -88,7 +88,7 @@ class InventorySystem {
                 unitCount: 1,
                 cooldown: 420, // 7秒
                 minQuality: 3, // 紫品质起始
-                description: '抗远程攻击的巨型战士'
+                description: '体型庞大的防御专家'
             },
             cavalry: {
                 name: '骑兵',
@@ -99,7 +99,7 @@ class InventorySystem {
                 unitCount: 1,
                 cooldown: 540, // 9秒
                 minQuality: 1, // 绿品质起始
-                description: '高速高攻击的骑兵单位'
+                description: '高机动性的近战单位'
             },
             
             // 大尺寸近战单位 (3x1)
@@ -112,7 +112,7 @@ class InventorySystem {
                 unitCount: 1,
                 cooldown: 720, // 12秒
                 minQuality: 2, // 蓝品质起始
-                description: '多单位的民兵组织'
+                description: '本场战斗召唤数量+1'
             },
             
             // 特殊单位
@@ -125,7 +125,7 @@ class InventorySystem {
                 unitCount: 1,
                 cooldown: 540, // 9秒
                 minQuality: 4, // 橙品质起始
-                description: '相邻单位召唤时增强攻击力'
+                description: '相邻近战单位召唤时增强自身'
             },
             titan: {
                 name: '泰坦',
@@ -136,7 +136,7 @@ class InventorySystem {
                 unitCount: 1,
                 cooldown: 1200, // 20秒
                 minQuality: 4, // 橙品质起始
-                description: '近战单位召唤时减少冷却时间'
+                description: '强力单体，能够减速相邻单位'
             },
             
             // === 其他兵种 ===
@@ -150,7 +150,7 @@ class InventorySystem {
                 unitCount: 1,
                 cooldown: 360, // 6秒
                 minQuality: 1,
-                description: '生产1个弓箭手'
+                description: '远程攻击的弓箭手'
             },
             staff: {
                 name: '法杖',
@@ -161,7 +161,7 @@ class InventorySystem {
                 unitCount: 1,
                 cooldown: 420, // 7秒
                 minQuality: 1,
-                description: '生产1个法师'
+                description: '魔法攻击的法师单位'
             },
             shield: {
                 name: '盾牌',
@@ -172,7 +172,7 @@ class InventorySystem {
                 unitCount: 1,
                 cooldown: 480, // 8秒
                 minQuality: 1,
-                description: '生产1个坦克兵'
+                description: '高防御力的坦克单位'
             },
             
             // === 支援物品 ===
@@ -185,7 +185,7 @@ class InventorySystem {
                 unitCount: 0,
                 cooldown: 240, // 4秒
                 minQuality: 3, // 紫色起始
-                description: '全场其他近战物品召唤加速2秒'
+                description: '加速其他近战单位召唤'
             },
             
             magicSword: {
@@ -197,7 +197,7 @@ class InventorySystem {
                 unitCount: 0,
                 cooldown: 420, // 7秒
                 minQuality: 2, // 蓝色起始
-                description: '触发时为相邻的近战物品增加5攻击力'
+                description: '战斗中为相邻单位提供攻击加成'
             },
             
             badge: {
@@ -209,7 +209,7 @@ class InventorySystem {
                 unitCount: 0,
                 cooldown: -1, // 被动物品
                 minQuality: 4, // 橙色起始
-                description: '为左侧近战物品减少2秒冷却时间'
+                description: '持续减少左侧单位冷却时间'
             }
         };
         
@@ -218,6 +218,22 @@ class InventorySystem {
         
         // 初始化背包物品（用于测试）
         this.initializeTestItems();
+    }
+    
+    // 速度数值转换为文字描述
+    getSpeedText(speed) {
+        if (speed <= 5) return '慢';
+        if (speed <= 8) return '较慢';
+        if (speed <= 11) return '中';
+        if (speed <= 14) return '较快';
+        return '快';
+    }
+    
+    // 生命值数值转换为文字描述
+    getHealthText(health) {
+        if (health < 150) return '低';
+        if (health <= 350) return '中';
+        return '高';
     }
     
     // 预加载关键emoji
@@ -532,6 +548,11 @@ class InventorySystem {
             if (item.id === 'badge') {
                 this.refreshAllBadgeEffects();
             }
+            
+            // 如果是野蛮人升级，刷新野蛮人效果
+            if (item.id === 'barbarian') {
+                this.applyBarbarianBonus();
+            }
         }
     }
     
@@ -678,7 +699,8 @@ class InventorySystem {
                     cooldownReduction: 0, // 冷却时间减少（徽章等物品会修改这个值）
                     meleeBonus: 0, // 忍者特殊技能：近战攻击力加成
                     militiaBonus: 0, // 民兵团特殊技能：额外单位计数器
-                    barbarianBonus: 0, // 野蛮人特殊技能：品质攻击力加成
+                    barbarianBonus: 0, // 野蛮人特殊技能：品质攻击力加成（已弃用）
+                    barbarianAdjacentBonus: 0, // 来自相邻野蛮人的攻击力加成
                     accelerationTime: 0 // 战旗加速剩余时间
                 };
                 
@@ -689,7 +711,7 @@ class InventorySystem {
                 // 为野蛮人计算品质攻击力加成（相对于起始品质）
                 if (item.id === 'barbarian') {
                     const qualityLevelsAboveMin = item.quality - template.minQuality;
-                    item.barbarianBonus = qualityLevelsAboveMin * 30; // 每提升一个品质+30攻击力
+                    // 野蛮人不再使用barbarianBonus自我加成，改为相邻加成机制
                 }
                 
                 // 为巨人计算品质生命值加成（相对于起始品质）
@@ -839,7 +861,7 @@ class InventorySystem {
                     // 为野蛮人计算品质攻击力加成（相对于起始品质）
                     if (item.id === 'barbarian') {
                         const qualityLevelsAboveMin = item.quality - template.minQuality;
-                        item.barbarianBonus = qualityLevelsAboveMin * 30; // 每提升一个品质+30攻击力
+                        // 野蛮人不再使用barbarianBonus自我加成，改为相邻加成机制
                     }
                     
                     // 为巨人计算品质生命值加成（相对于起始品质）
@@ -900,6 +922,9 @@ class InventorySystem {
         
         // 刷新徽章效果
         this.refreshAllBadgeEffects();
+        
+        // 刷新野蛮人效果
+        this.applyBarbarianBonus();
     }
     
     addItemToInventoryAtSlot(item, targetSlot) {
@@ -926,6 +951,9 @@ class InventorySystem {
         
         // 刷新所有徽章效果
         this.refreshAllBadgeEffects();
+        
+        // 刷新野蛮人效果
+        this.applyBarbarianBonus();
     }
     
     useItem(slotIndex) {
@@ -2675,7 +2703,7 @@ class InventorySystem {
             // 为野蛮人计算品质攻击力加成（相对于起始品质）
             if (newItem.id === 'barbarian') {
                 const qualityLevelsAboveMin = newItem.quality - template.minQuality;
-                newItem.barbarianBonus = qualityLevelsAboveMin * 30; // 每提升一个品质+30攻击力
+                // 野蛮人不再使用barbarianBonus自我加成，改为相邻加成机制
             }
             
             // 为巨人计算品质生命值加成（相对于起始品质）
@@ -2710,7 +2738,8 @@ class InventorySystem {
                     cooldownReduction: 0, // 冷却时间减少（徽章等物品会修改这个值）
                     meleeBonus: 0, // 忍者特殊技能：近战攻击力加成
                     militiaBonus: 0, // 民兵团特殊技能：额外单位计数器
-                    barbarianBonus: 0, // 野蛮人特殊技能：品质攻击力加成
+                    barbarianBonus: 0, // 野蛮人特殊技能：品质攻击力加成（已弃用）
+                    barbarianAdjacentBonus: 0, // 来自相邻野蛮人的攻击力加成
                     gladiatorBonus: 0, // 角斗士特殊技能：战斗攻击力加成
                     giantHealthBonus: 0, // 巨人升级效果：品质生命值加成
                     swordmasterBonus: 0 // 剑圣特殊技能：相邻召唤攻击力加成
@@ -2723,7 +2752,7 @@ class InventorySystem {
                 // 为野蛮人计算品质攻击力加成（相对于起始品质）
                 if (newItem.id === 'barbarian') {
                     const qualityLevelsAboveMin = newItem.quality - template.minQuality;
-                    newItem.barbarianBonus = qualityLevelsAboveMin * 30; // 每提升一个品质+30攻击力
+                    // 野蛮人不再使用barbarianBonus自我加成，改为相邻加成机制
                 }
                 
                 
@@ -2878,54 +2907,36 @@ class InventorySystem {
         // 检查是否为非召唤物品
         const isNonSummonItem = template.unitCount === 0;
         
-        // 获取所有stat-row元素
-        const statRows = document.querySelectorAll('.shop-info-stats .stat-row');
+        // 所有物品都在头部显示CD
+        const cooldownHeaderElement = document.getElementById('shop-info-cooldown-header');
+        const cooldownHeaderContainer = document.querySelector('.shop-info-cooldown-header');
         
-        if (isNonSummonItem) {
-            // 非召唤物品：只显示CD和特殊技能
-            // 被动物品（CD=-1）不显示CD属性
-            if (actualCooldown === -1) {
-                // 被动物品：完全隐藏包含CD的第二行
-                if (statRows[1]) statRows[1].style.display = 'none';
-            } else {
-                // 普通非召唤物品：显示CD
-                document.getElementById('shop-info-cooldown').textContent = `${actualCooldown/60}秒`;
-                const cooldownStatItem = document.getElementById('shop-info-cooldown').closest('.stat-item');
-                if (cooldownStatItem) {
-                    cooldownStatItem.style.display = '';
-                }
-                
-                // 显示第二行，但隐藏单位数
-                if (statRows[1]) {
-                    const countItem = statRows[1].querySelector('.stat-item:nth-child(2)');
-                    if (countItem) countItem.style.visibility = 'hidden'; // 隐藏单位数，保持布局空间
-                    statRows[1].style.display = 'flex';
-                }
-            }
-            
-            // 隐藏不相关的属性行
-            if (statRows[0]) statRows[0].style.display = 'none'; // 攻击力和血量
-            if (statRows[2]) statRows[2].style.display = 'none'; // 速度和基地伤害
+        if (actualCooldown === -1) {
+            // 被动物品：隐藏CD显示
+            if (cooldownHeaderContainer) cooldownHeaderContainer.style.display = 'none';
         } else {
-            // 召唤物品：显示所有属性
-            document.getElementById('shop-info-attack').textContent = unitStats.attack;
-            document.getElementById('shop-info-health').textContent = unitStats.health;
-            document.getElementById('shop-info-cooldown').textContent = `${actualCooldown/60}秒`;
-            document.getElementById('shop-info-speed').textContent = unitStats.speed;
-            
-            // 显示属性行
-            if (statRows[0]) statRows[0].style.display = 'flex'; // 攻击力和血量
-            if (statRows[1]) statRows[1].style.display = 'flex'; // CD和速度
+            // 显示CD
+            if (cooldownHeaderContainer) cooldownHeaderContainer.style.display = 'flex';
+            if (cooldownHeaderElement) cooldownHeaderElement.textContent = `${actualCooldown/60}s`;
         }
+        
+        // 属性区域已移除，无需处理属性显示
         
         // 更新价格显示
         const price = this.getItemPrice(template, quality);
         document.getElementById('shop-info-cost').textContent = `💰${price}`;
         
+        // 隐藏物品描述
+        const descriptionElement = document.getElementById('shop-info-description');
+        if (descriptionElement) {
+            descriptionElement.style.display = 'none';
+        }
+        
         // 显示特殊技能（忍者和民兵团有特殊技能）
         const specialSkillElement = document.getElementById('shop-info-special-skill');
         if (item.id === 'assassin' && specialSkillElement) {
             specialSkillElement.classList.remove('hidden');
+            specialSkillElement.classList.add('passive'); // 被动效果，添加分割线
             const meleeBonus = item.meleeBonus || 0;
             
             // 根据当前品质动态生成技能描述
@@ -2937,21 +2948,23 @@ class InventorySystem {
             }
             
             const skillStatusElement = document.getElementById('skill-status');
-            skillStatusElement.innerHTML = `当前加成: <span style="color: white; font-weight: bold;">+${meleeBonus}</span>`;
+            skillStatusElement.style.display = 'none';
         } else if (item.id === 'militia' && specialSkillElement) {
             specialSkillElement.classList.remove('hidden');
+            specialSkillElement.classList.remove('passive'); // 主动效果，无分割线
             const militiaBonus = item.militiaBonus || 0;
             const qualityColor = this.getQualityColor(item.quality);
             
             const skillDescElement = document.getElementById('skill-description');
             if (skillDescElement) {
-                skillDescElement.innerHTML = `战斗中召唤后，本场战斗下次召唤多生产 <span style="color: white; font-weight: bold;">+1</span> 个单位`;
+                skillDescElement.innerHTML = `本场战斗召唤数量 <span style="color: white; font-weight: bold;">+1</span>`;
             }
             
             const skillStatusElement = document.getElementById('skill-status');
-            skillStatusElement.innerHTML = `下次额外生产: <span style="color: white; font-weight: bold;">+${militiaBonus}</span> 个`;
+            skillStatusElement.style.display = 'none';
         } else if (item.id === 'gladiator' && specialSkillElement) {
             specialSkillElement.classList.remove('hidden');
+            specialSkillElement.classList.add('passive'); // 被动效果，添加分割线
             const gladiatorBonus = item.gladiatorBonus || 0;
             const totalBonus = gladiatorBonus;
             const qualityColor = this.getQualityColor(item.quality);
@@ -2963,9 +2976,10 @@ class InventorySystem {
             }
             
             const skillStatusElement = document.getElementById('skill-status');
-            skillStatusElement.innerHTML = `当前攻击力加成: <span style="color: white; font-weight: bold;">+${totalBonus}</span>`;
+            skillStatusElement.style.display = 'none';
         } else if (item.id === 'swordmaster' && specialSkillElement) {
             specialSkillElement.classList.remove('hidden');
+            specialSkillElement.classList.add('passive'); // 被动效果，添加分割线
             const swordmasterBonus = item.swordmasterBonus || 0;
             const qualityColor = this.getQualityColor(item.quality);
             
@@ -2976,9 +2990,10 @@ class InventorySystem {
             }
             
             const skillStatusElement = document.getElementById('skill-status');
-            skillStatusElement.innerHTML = `当前攻击力加成: <span style="color: white; font-weight: bold;">+${swordmasterBonus}</span>`;
+            skillStatusElement.style.display = 'none';
         } else if (item.id === 'titan' && specialSkillElement) {
             specialSkillElement.classList.remove('hidden');
+            specialSkillElement.classList.add('passive'); // 被动效果，添加分割线
             const titanCharges = item.titanCharges || 0;
             const qualityColor = this.getQualityColor(item.quality);
             
@@ -2988,9 +3003,10 @@ class InventorySystem {
             }
             
             const skillStatusElement = document.getElementById('skill-status');
-            skillStatusElement.innerHTML = ``; // 不显示任何状态信息
+            skillStatusElement.style.display = 'none'; // 隐藏状态信息
         } else if (item.id === 'giant' && specialSkillElement) {
             specialSkillElement.classList.remove('hidden');
+            specialSkillElement.classList.add('passive'); // 被动效果，添加分割线
             const qualityColor = this.getQualityColor(item.quality);
             
             const skillDescElement = document.getElementById('skill-description');
@@ -2999,9 +3015,10 @@ class InventorySystem {
             }
             
             const skillStatusElement = document.getElementById('skill-status');
-            skillStatusElement.innerHTML = ``; // 不显示任何状态信息
+            skillStatusElement.style.display = 'none'; // 隐藏状态信息
         } else if (item.id === 'warBanner' && specialSkillElement) {
             specialSkillElement.classList.remove('hidden');
+            specialSkillElement.classList.remove('passive'); // 主动效果，无分割线
             const qualityColor = this.getQualityColor(item.quality);
             
             const skillDescElement = document.getElementById('skill-description');
@@ -3010,9 +3027,10 @@ class InventorySystem {
             }
             
             const skillStatusElement = document.getElementById('skill-status');
-            skillStatusElement.innerHTML = ``; // 不显示任何状态信息
+            skillStatusElement.style.display = 'none'; // 隐藏状态信息
         } else if (item.id === 'magicSword' && specialSkillElement) {
             specialSkillElement.classList.remove('hidden');
+            specialSkillElement.classList.remove('passive'); // 主动效果，无分割线
             const attackBonus = this.getMagicSwordBonus(item.quality);
             
             const skillDescElement = document.getElementById('skill-description');
@@ -3021,9 +3039,10 @@ class InventorySystem {
             }
             
             const skillStatusElement = document.getElementById('skill-status');
-            skillStatusElement.innerHTML = ``; // 不显示任何状态信息
+            skillStatusElement.style.display = 'none'; // 隐藏状态信息
         } else if (item.id === 'badge' && specialSkillElement) {
             specialSkillElement.classList.remove('hidden');
+            specialSkillElement.classList.add('passive'); // 被动效果，添加分割线
             const cooldownReduction = this.getBadgeReduction(item.quality);
             
             const skillDescElement = document.getElementById('skill-description');
@@ -3032,9 +3051,22 @@ class InventorySystem {
             }
             
             const skillStatusElement = document.getElementById('skill-status');
-            skillStatusElement.innerHTML = ``; // 不显示任何状态信息
+            skillStatusElement.style.display = 'none'; // 隐藏状态信息
+        } else if (item.id === 'barbarian' && specialSkillElement) {
+            specialSkillElement.classList.remove('hidden');
+            specialSkillElement.classList.add('passive'); // 被动效果，添加分割线
+            
+            const skillDescElement = document.getElementById('skill-description');
+            if (skillDescElement) {
+                const qualityBonus = this.getBarbarianQualityBonus(item.quality);
+                skillDescElement.innerHTML = `相邻<span class="melee-badge">近战</span>物品攻击力 <span style="color: white; font-weight: bold;">+${qualityBonus}</span>`;
+            }
+            
+            const skillStatusElement = document.getElementById('skill-status');
+            skillStatusElement.style.display = 'none'; // 隐藏状态信息
         } else if (specialSkillElement) {
             specialSkillElement.classList.add('hidden');
+            specialSkillElement.classList.remove('passive'); // 清除样式类
         }
         
         
@@ -3162,6 +3194,11 @@ class InventorySystem {
                     stats.attack += item.meleeBonus;
                 }
                 
+                // 野蛮人相邻加成：添加来自相邻野蛮人的攻击力加成
+                if (item && item.barbarianAdjacentBonus) {
+                    stats.attack += item.barbarianAdjacentBonus;
+                }
+                
                 // 野蛮人特殊技能：添加品质攻击力加成
                 if (unitKey === 'barbarian' && item && item.barbarianBonus) {
                     stats.attack += item.barbarianBonus;
@@ -3223,10 +3260,30 @@ class InventorySystem {
             }
             // 可以在这里为其他流派添加图标
         } else {
-            // 召唤物品：显示攻击力数字
+            // 召唤物品：显示攻击力数字，前面加类型图标
             const unitStats = this.getUnitStats(template.unitType, unitKey);
             const attackPower = unitStats.attack;
-            attackLabel.textContent = `${attackPower}`;
+            
+            // 根据单位类型添加简单图标
+            let typeIcon = '';
+            switch (template.unitType) {
+                case 'melee':
+                    typeIcon = '⚔️';
+                    break;
+                case 'ranged':
+                    typeIcon = '🏹';
+                    break;
+                case 'mage':
+                    typeIcon = '🔮';
+                    break;
+                case 'tank':
+                    typeIcon = '🛡️';
+                    break;
+                default:
+                    typeIcon = '⚔️';
+            }
+            
+            attackLabel.innerHTML = `<span style="font-size: 10px;">${typeIcon}</span>${attackPower}`;
         }
         
         // 添加到visual元素中
@@ -3255,10 +3312,30 @@ class InventorySystem {
             }
             // 可以在这里为其他流派添加图标
         } else {
-            // 召唤物品：显示攻击力数字（包括忍者的meleeBonus加成）
+            // 召唤物品：显示攻击力数字（包括忍者的meleeBonus加成），前面加类型图标
             const unitStats = this.getUnitStats(template.unitType, unitKey, item);
             const attackPower = unitStats.attack;
-            attackLabel.textContent = `${attackPower}`;
+            
+            // 根据单位类型添加简单图标
+            let typeIcon = '';
+            switch (template.unitType) {
+                case 'melee':
+                    typeIcon = '⚔️';
+                    break;
+                case 'ranged':
+                    typeIcon = '🏹';
+                    break;
+                case 'mage':
+                    typeIcon = '🔮';
+                    break;
+                case 'tank':
+                    typeIcon = '🛡️';
+                    break;
+                default:
+                    typeIcon = '⚔️';
+            }
+            
+            attackLabel.innerHTML = `<span style="font-size: 10px;">${typeIcon}</span>${attackPower}`;
         }
         
         // 添加到物品元素中
@@ -3349,6 +3426,60 @@ class InventorySystem {
             5: 5    // 红色
         };
         return bonusMap[quality] || 1; // 默认加成为1
+    }
+    
+    // 野蛮人品质加成
+    getBarbarianQualityBonus(quality) {
+        // 品质等级对应的攻击力加成：基础+10，蓝+10，紫+15，橙+20，红+25
+        const bonusMap = {
+            1: 10,  // 绿色
+            2: 10,  // 蓝色 
+            3: 15,  // 紫色
+            4: 20,  // 橙色
+            5: 25   // 红色
+        };
+        return bonusMap[quality] || 10; // 默认加成为10
+    }
+    
+    // 应用野蛮人的相邻加成效果
+    applyBarbarianBonus() {
+        // 清除所有野蛮人相邻加成
+        for (let i = 0; i < this.inventory.length; i++) {
+            const item = this.inventory[i];
+            if (item && item !== 'occupied' && item.barbarianAdjacentBonus) {
+                item.barbarianAdjacentBonus = 0;
+            }
+        }
+        for (let i = 0; i < this.backpack.length; i++) {
+            const item = this.backpack[i];
+            if (item && item !== 'occupied' && item.barbarianAdjacentBonus) {
+                item.barbarianAdjacentBonus = 0;
+            }
+        }
+        
+        // 重新应用野蛮人相邻加成
+        for (let i = 0; i < this.inventory.length; i++) {
+            const barbarianItem = this.inventory[i];
+            if (barbarianItem && barbarianItem !== 'occupied' && barbarianItem.id === 'barbarian') {
+                const bonus = this.getBarbarianQualityBonus(barbarianItem.quality);
+                
+                // 检查相邻位置的近战物品
+                const adjacentPositions = this.getAdjacentPositions(i, barbarianItem.template.size);
+                for (const pos of adjacentPositions) {
+                    const adjacentItem = this.inventory[pos];
+                    if (adjacentItem && adjacentItem !== 'occupied' && 
+                        adjacentItem.template.unitType === 'melee' && 
+                        adjacentItem.template.unitCount > 0) {
+                        // 为相邻近战物品添加攻击力加成
+                        adjacentItem.barbarianAdjacentBonus = (adjacentItem.barbarianAdjacentBonus || 0) + bonus;
+                        console.log(`野蛮人为相邻${adjacentItem.template.name}提供攻击力加成 +${bonus}`);
+                    }
+                }
+            }
+        }
+        
+        // 更新显示
+        this.updateInventoryDisplay();
     }
     
     // 获取品质对应的颜色
@@ -3913,7 +4044,7 @@ class InventorySystem {
             // 为野蛮人计算品质攻击力加成（相对于起始品质）
             if (newItem.id === 'barbarian') {
                 const qualityLevelsAboveMin = newItem.quality - template.minQuality;
-                newItem.barbarianBonus = qualityLevelsAboveMin * 30; // 每提升一个品质+30攻击力
+                // 野蛮人不再使用barbarianBonus自我加成，改为相邻加成机制
             }
             
             // 为巨人计算品质生命值加成（相对于起始品质）

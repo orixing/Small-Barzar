@@ -1044,8 +1044,15 @@ html, body {
 .shop-info-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     margin-bottom: 15px;
     gap: 12px;
+}
+
+.shop-info-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .shop-info-icon {
@@ -1056,6 +1063,7 @@ html, body {
 .shop-info-title {
     flex: 1;
 }
+
 
 .shop-info-title h3 {
     margin: 0;
@@ -1099,28 +1107,41 @@ html, body {
 
 .stat-row {
     display: flex;
-    gap: 15px;
+    gap: 6px;
     margin-bottom: 8px;
 }
 
 .stat-item {
     display: flex;
     justify-content: space-between;
-    flex: 1;
+    width: 80px; /* 单个属性时使用更宽的宽度 */
+    flex-shrink: 0; /* 不允许缩小 */
     padding: 4px 8px;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 4px;
+    white-space: nowrap; /* 防止文字换行 */
 }
 
 .stat-label {
     color: #bdc3c7;
-    font-size: 14px;
+    font-size: 12px;
+    flex-shrink: 0; /* 防止标签被压缩 */
 }
 
 .stat-value {
     color: #ecf0f1;
     font-weight: bold;
-    font-size: 14px;
+    font-size: 12px;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 血量和移速文字显示使用更小字体 */
+#shop-info-health,
+#shop-info-speed {
+    font-size: 11px;
+    font-weight: normal;
 }
 
 /* 攻击属性emoji颜色 */
@@ -1147,6 +1168,23 @@ html, body {
 }
 }
 
+/* CD显示区域样式 */
+.shop-info-cooldown-header {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.cooldown-label {
+    font-size: 12px;
+}
+
+.cooldown-value {
+    color: #ecf0f1;
+    font-weight: bold;
+    font-size: 12px;
+}
+
 .shop-info-price {
     text-align: center;
     font-size: 16px;
@@ -1158,8 +1196,17 @@ html, body {
 /* 特殊技能显示区域 */
 .shop-info-special-skill {
     margin-top: 15px;
+}
+
+/* 被动效果样式 */
+.shop-info-special-skill.passive {
     padding-top: 15px;
     border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* 物品介绍区域 - 已隐藏 */
+.shop-info-description {
+    display: none;
 }
 
 .skill-label {
