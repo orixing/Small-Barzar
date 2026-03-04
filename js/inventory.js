@@ -1261,6 +1261,9 @@ class InventorySystem {
                             // 刷新徽章效果（因为物品位置改变了）
                             this.refreshAllBadgeEffects();
                             
+                            // 刷新野蛮人效果（因为物品位置改变了）
+                            this.applyBarbarianBonus();
+                            
                             // 清除拖拽状态
                             this.draggedItem = null;
                             this.draggedFromSlot = -1;
@@ -1618,6 +1621,9 @@ class InventorySystem {
         // 刷新徽章效果（因为可能出售了徽章或影响徽章的物品）
         this.refreshAllBadgeEffects();
         
+        // 刷新野蛮人效果（因为可能出售了野蛮人或影响野蛮人的物品）
+        this.applyBarbarianBonus();
+        
         // 播放音效
         Utils.playSound('sell');
         
@@ -1676,6 +1682,9 @@ class InventorySystem {
         
         // 刷新徽章效果（物品移除可能影响徽章效果）
         this.refreshAllBadgeEffects();
+        
+        // 刷新野蛮人效果（物品移除可能影响野蛮人效果）
+        this.applyBarbarianBonus();
     }
     
     showSellEffect(sellPrice) {
@@ -2446,6 +2455,9 @@ class InventorySystem {
         // 刷新徽章效果（因为物品从战斗区移除了）
         this.refreshAllBadgeEffects();
         
+        // 刷新野蛮人效果（因为物品从战斗区移除了）
+        this.applyBarbarianBonus();
+        
         return true;
     }
     
@@ -2618,6 +2630,9 @@ class InventorySystem {
         
         // 刷新徽章效果（物品位置变化可能影响徽章效果）
         this.refreshAllBadgeEffects();
+        
+        // 刷新野蛮人效果（物品位置变化可能影响野蛮人效果）
+        this.applyBarbarianBonus();
         
         // 更新显示
         this.updateInventoryDisplay();
@@ -3441,7 +3456,7 @@ class InventorySystem {
         return bonusMap[quality] || 10; // 默认加成为10
     }
     
-    // 应用野蛮人的相邻加成效果
+    // 应用野蛮人的相邻加成效果（参考徽章实现）
     applyBarbarianBonus() {
         // 清除所有野蛮人相邻加成
         for (let i = 0; i < this.inventory.length; i++) {
@@ -3461,25 +3476,50 @@ class InventorySystem {
         for (let i = 0; i < this.inventory.length; i++) {
             const barbarianItem = this.inventory[i];
             if (barbarianItem && barbarianItem !== 'occupied' && barbarianItem.id === 'barbarian') {
-                const bonus = this.getBarbarianQualityBonus(barbarianItem.quality);
-                
-                // 检查相邻位置的近战物品
-                const adjacentPositions = this.getAdjacentPositions(i, barbarianItem.template.size);
-                for (const pos of adjacentPositions) {
-                    const adjacentItem = this.inventory[pos];
-                    if (adjacentItem && adjacentItem !== 'occupied' && 
-                        adjacentItem.template.unitType === 'melee' && 
-                        adjacentItem.template.unitCount > 0) {
-                        // 为相邻近战物品添加攻击力加成
-                        adjacentItem.barbarianAdjacentBonus = (adjacentItem.barbarianAdjacentBonus || 0) + bonus;
-                        console.log(`野蛮人为相邻${adjacentItem.template.name}提供攻击力加成 +${bonus}`);
-                    }
-                }
+                this.applySingleBarbarianEffect(i);
             }
         }
         
         // 更新显示
         this.updateInventoryDisplay();
+    }
+    
+    // 应用单个野蛮人的效果（参考徽章的 applyBadgeEffect）
+    applySingleBarbarianEffect(barbarianSlot) {
+        const barbarianItem = this.inventory[barbarianSlot];
+        if (!barbarianItem || barbarianItem.id !== 'barbarian') return;
+        
+        const bonus = this.getBarbarianQualityBonus(barbarianItem.quality);
+        
+        // 检查左侧位置
+        const leftSlot = barbarianSlot - 1;
+        if (leftSlot >= 0) {
+            const leftItem = this.inventory[leftSlot];
+            
+            if (leftItem === 'occupied') {
+                // 左侧被占用，查找这个被占用格子属于哪个物品
+                const actualItem = this.findItemByOccupiedSlot(leftSlot);
+                if (actualItem && actualItem.template.unitType === 'melee') {
+                    actualItem.barbarianAdjacentBonus = (actualItem.barbarianAdjacentBonus || 0) + bonus;
+                    console.log(`野蛮人为左侧被占用格子的近战物品(${actualItem.id})提供攻击力加成 +${bonus}`);
+                }
+            } else if (leftItem && leftItem.template.unitType === 'melee') {
+                // 左侧是实际的近战物品
+                leftItem.barbarianAdjacentBonus = (leftItem.barbarianAdjacentBonus || 0) + bonus;
+                console.log(`野蛮人为左侧近战物品(位置${leftSlot}, ${leftItem.id})提供攻击力加成 +${bonus}`);
+            }
+        }
+        
+        // 检查右侧位置
+        const rightSlot = barbarianSlot + barbarianItem.template.size;
+        if (rightSlot < this.inventory.length) {
+            const rightItem = this.inventory[rightSlot];
+            
+            if (rightItem && rightItem !== 'occupied' && rightItem.template.unitType === 'melee') {
+                rightItem.barbarianAdjacentBonus = (rightItem.barbarianAdjacentBonus || 0) + bonus;
+                console.log(`野蛮人为右侧近战物品(位置${rightSlot}, ${rightItem.id})提供攻击力加成 +${bonus}`);
+            }
+        }
     }
     
     // 获取品质对应的颜色
