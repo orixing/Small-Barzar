@@ -247,8 +247,8 @@ html, body {
 
 /* 商店区域 - 增加高度 */
 .shop-section {
-    height: 140px;
-    min-height: 140px;
+    height: 180px;
+    min-height: 180px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
@@ -956,21 +956,6 @@ html, body {
         min-height: 40px;
     }
     
-    /* 增加商店和战斗区高度 */
-    .shop-section {
-        height: 140px;
-        min-height: 140px;
-    }
-    
-    .inventory-section {
-        height: 135px;
-        min-height: 135px;
-    }
-    
-    .backpack-section {
-        height: 135px;
-        min-height: 135px;
-    }
 }
 
 @media (max-width: 480px) {
