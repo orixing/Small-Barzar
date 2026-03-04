@@ -40,7 +40,7 @@ class InventorySystem {
                 baseValue: 1,
                 unitType: 'melee',
                 unitCount: 1,
-                cooldown: 360, // 6秒 
+                cooldown: 300, // 5秒 
                 minQuality: 1, // 绿品质起始
                 description: '基础近战战士'
             },
@@ -53,7 +53,7 @@ class InventorySystem {
                 unitCount: 1,
                 cooldown: 300, // 5秒
                 minQuality: 1, // 绿品质起始
-                description: '快速高攻击近战单位'
+                description: '忍者的攻击力+2'
             },
             gladiator: {
                 name: '狂战士',
@@ -86,7 +86,7 @@ class InventorySystem {
                 baseValue: 2,
                 unitType: 'melee',
                 unitCount: 1,
-                cooldown: 540, // 9秒
+                cooldown: 420, // 7秒
                 minQuality: 3, // 紫品质起始
                 description: '抗远程攻击的巨型战士'
             },
@@ -110,7 +110,7 @@ class InventorySystem {
                 baseValue: 3,
                 unitType: 'melee',
                 unitCount: 1,
-                cooldown: 600, // 10秒
+                cooldown: 720, // 12秒
                 minQuality: 2, // 蓝品质起始
                 description: '多单位的民兵组织'
             },
@@ -195,9 +195,9 @@ class InventorySystem {
                 baseValue: 1,
                 unitType: 'melee',
                 unitCount: 0,
-                cooldown: 300, // 5秒
+                cooldown: 420, // 7秒
                 minQuality: 2, // 蓝色起始
-                description: '触发时为相邻的近战物品增加10攻击力'
+                description: '触发时为相邻的近战物品增加5攻击力'
             },
             
             badge: {
@@ -215,6 +215,9 @@ class InventorySystem {
         
         this.preloadEmojis(); // 预加载emoji
         this.init();
+        
+        // 初始化背包物品（用于测试）
+        this.initializeTestItems();
     }
     
     // 预加载关键emoji
@@ -252,6 +255,12 @@ class InventorySystem {
     // 根据物品模板和品质计算出售价格（价值的一半）
     getItemSellPrice(template, qualityLevel) {
         return Math.floor(this.getItemPrice(template, qualityLevel) / 2);
+    }
+    
+    // 初始化测试物品到背包
+    initializeTestItems() {
+        // 不添加任何测试物品，保持背包为空
+        console.log('背包初始化完成：空背包');
     }
     
     init() {
@@ -1221,6 +1230,9 @@ class InventorySystem {
                             this.updateInventoryDisplay();
                             this.updateBackpackDisplay();
                             
+                            // 刷新徽章效果（因为物品位置改变了）
+                            this.refreshAllBadgeEffects();
+                            
                             // 清除拖拽状态
                             this.draggedItem = null;
                             this.draggedFromSlot = -1;
@@ -1574,6 +1586,9 @@ class InventorySystem {
         // 更新显示
         this.updateInventoryDisplay();
         this.game.updateUI();
+        
+        // 刷新徽章效果（因为可能出售了徽章或影响徽章的物品）
+        this.refreshAllBadgeEffects();
         
         // 播放音效
         Utils.playSound('sell');
@@ -2400,6 +2415,9 @@ class InventorySystem {
         this.updateInventoryDisplay();
         this.updateBackpackDisplay();
         
+        // 刷新徽章效果（因为物品从战斗区移除了）
+        this.refreshAllBadgeEffects();
+        
         return true;
     }
     
@@ -2915,7 +2933,7 @@ class InventorySystem {
             const qualityColor = this.getQualityColor(item.quality);
             const skillDescElement = document.getElementById('skill-description');
             if (skillDescElement) {
-                skillDescElement.innerHTML = `每购买一个<span class="melee-badge">近战</span>物品，忍者的攻击力增加 <span style="color: white; font-weight: bold;">+${currentQualityBonus}</span>`;
+                skillDescElement.innerHTML = `每购买一个<span class="melee-badge">近战</span>物品，忍者的攻击力 <span style="color: white; font-weight: bold;">+${currentQualityBonus}</span>`;
             }
             
             const skillStatusElement = document.getElementById('skill-status');
@@ -3361,7 +3379,7 @@ class InventorySystem {
             // 这些单位不享受品质减少，但仍然享受徽章减少
             const badgeReduction = (item.cooldownReduction || 0) * 60; // 转换为帧数
             const finalCooldown = baseCooldown - badgeReduction;
-            return Math.max(60, finalCooldown); // 最小60帧（1秒）
+            return Math.max(6, finalCooldown); // 最小6帧（0.1秒）
         }
         
         // 其他单位每升一级触发间隔减少（相对于起始品质）
@@ -3384,7 +3402,7 @@ class InventorySystem {
         const badgeReduction = (item.cooldownReduction || 0) * 60; // 转换为帧数
         
         const finalCooldown = baseCooldown - qualityReductionInFrames - badgeReduction;
-        return Math.max(60, finalCooldown); // 最小60帧（1秒）
+        return Math.max(6, finalCooldown); // 最小6帧（0.1秒）
     }
     
     // 根据角斗士品质获取每次击杀的攻击力加成
@@ -3610,12 +3628,12 @@ class InventorySystem {
     // 宝剑特殊技能：获取品质对应的攻击力加成
     getMagicSwordBonus(quality) {
         const bonusMap = {
-            2: 10,  // 蓝色
-            3: 15,  // 紫色  
-            4: 20,  // 橙色
-            5: 25   // 红色
+            2: 5,   // 蓝色 +5
+            3: 8,   // 紫色 +8
+            4: 11,  // 橙色 +11
+            5: 14   // 红色 +14
         };
-        return bonusMap[quality] || 10;
+        return bonusMap[quality] || 5;
     }
     
     // 宝剑特殊技能：触发时为相邻的近战物品增加攻击力

@@ -312,9 +312,14 @@ class Unit {
         let actualDamage = damage;
         
         // 巨人特殊能力：受到非近战伤害-40%
-        if (this.itemId === 'giant' && attacker && attacker.type !== 'melee') {
-            actualDamage = Math.floor(damage * 0.6); // 减免40%，只受60%伤害
-            console.log(`巨人单位受到非近战伤害减免: ${damage} -> ${actualDamage}`);
+        if (this.itemId === 'giant') {
+            console.log(`巨人单位受到攻击 - 攻击者类型: ${attacker ? attacker.type : 'null'}, 原始伤害: ${damage}`);
+            if (attacker && attacker.type !== 'melee') {
+                actualDamage = Math.floor(damage * 0.6); // 减免40%，只受60%伤害
+                console.log(`巨人单位非近战减伤生效: ${damage} -> ${actualDamage}`);
+            } else {
+                console.log(`巨人单位受到近战攻击，无减伤`);
+            }
         }
         
         // 护盾逻辑：护盾优先承受伤害

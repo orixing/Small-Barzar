@@ -262,28 +262,51 @@ class Game {
     spawnEnemyUnit() {
         if (this.gameState !== 'playing' || this.gamePhase !== 'battle') return;
         
-        // 根据波数选择兵种类型
-        const unitType = this.getWaveUnitType();
+        // 根据波数确定本次刷怪数量
+        const spawnCount = this.getWaveSpawnCount();
         
-        const unit = new Unit(unitType, 'enemy',
-            this.canvas.width - 70 + Utils.randomInt(-20, 20),
-            this.canvas.height / 2 + Utils.randomInt(-30, 30)
-        );
+        // 应用波次数值成长：每波×1.05倍数值（第1波=1.0倍，第2波=1.05倍，第3波=1.10倍...）
+        const waveMultiplier = Math.pow(1.05, this.wave - 1);
         
-        // 应用波次数值成长：每波×1.2倍数值（第1波=1.0倍，第2波=1.2倍，第3波=1.44倍...）
-        const waveMultiplier = Math.pow(1.2, this.wave - 1);
+        for (let i = 0; i < spawnCount; i++) {
+            // 根据波数选择兵种类型
+            const unitType = this.getWaveUnitType();
+            
+            const unit = new Unit(unitType, 'enemy',
+                this.canvas.width - 70 + Utils.randomInt(-20, 20),
+                this.canvas.height / 2 + Utils.randomInt(-30, 30)
+            );
+            
+            // 增强怪物血量和攻击力
+            unit.health = Math.round(unit.health * waveMultiplier);
+            unit.maxHealth = unit.health;
+            unit.attackPower = Math.round(unit.attackPower * waveMultiplier);
+            
+            const cost = unit.getCost();
+            if (this.enemyGold >= cost) {
+                this.enemyGold -= cost;
+                this.enemyUnits.push(unit);
+            } else {
+                // 金币不足时停止生产
+                break;
+            }
+        }
         
-        // 增强怪物血量和攻击力
-        unit.health = Math.round(unit.health * waveMultiplier);
-        unit.maxHealth = unit.health;
-        unit.attackPower = Math.round(unit.attackPower * waveMultiplier);
-        
-        console.log(`第${this.wave}波敌人强化: ${waveMultiplier.toFixed(2)}倍 (血量:${unit.health}, 攻击:${unit.attackPower})`);
-        
-        const cost = unit.getCost();
-        if (this.enemyGold >= cost) {
-            this.enemyGold -= cost;
-            this.enemyUnits.push(unit);
+        if (spawnCount > 1) {
+            console.log(`第${this.wave}波敌人: 生产${spawnCount}个单位, 强化倍数: ${waveMultiplier.toFixed(2)}倍`);
+        }
+    }
+
+    getWaveSpawnCount() {
+        // 根据波数确定每次刷怪数量
+        if (this.wave >= 10) {
+            return 4; // 第10波每次刷4个
+        } else if (this.wave >= 8) {
+            return 3; // 第8-9波每次刷3个
+        } else if (this.wave >= 5) {
+            return 2; // 第5-7波每次刷2个
+        } else {
+            return 1; // 第1-4波每次刷1个
         }
     }
 
@@ -439,20 +462,25 @@ class Game {
 
     getWaveSpawnInterval() {
         // 每波的生产间隔（帧数，60帧=1秒）
-        const spawnIntervals = {
-            1: 300,  // 5秒 - 开始
-            2: 270,  // 4.5秒
-            3: 240,  // 4秒 - 重装部队
-            4: 210,  // 3.5秒
-            5: 180,  // 3秒 - 混合军团
-            6: 150,  // 2.5秒 - 精锐军团
-            7: 120,  // 2秒 - 魔战军团
-            8: 90,   // 1.5秒 - 守护军团
-            9: 60,   // 1秒 - 联合军团
-            10: 18   // 0.3秒 - 王牌军团最快
+        // 指定每波的刷新间隔
+        const intervalSeconds = {
+            1: 5.0,   // 第1波: 5秒
+            2: 4.5,   // 第2波: 4.5秒
+            3: 4.0,   // 第3波: 4秒
+            4: 3.5,   // 第4波: 3.5秒
+            5: 4.5,   // 第5波: 4.5秒
+            6: 4.0,   // 第6波: 4秒
+            7: 3.5,   // 第7波: 3.5秒
+            8: 4.5,   // 第8波: 4.5秒
+            9: 4.0,   // 第9波: 4秒
+            10: 3.5   // 第10波: 3.5秒
         };
         
-        return spawnIntervals[this.wave] || 240; // 默认4秒
+        const seconds = intervalSeconds[this.wave] || 4.0; // 默认4秒
+        const intervalFrames = Math.round(seconds * 60);
+        
+        console.log(`第${this.wave}波刷怪间隔: ${seconds}秒 (${intervalFrames}帧)`);
+        return intervalFrames;
     }
 
 
