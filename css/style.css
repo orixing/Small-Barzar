@@ -42,9 +42,11 @@ html, body {
     -webkit-tap-highlight-color: transparent;
 }
 
-/* 顶部信息栏 - 精确12% */
+/* 顶部信息栏 - 固定高度 */
 #top-info {
-    height: 12vh;
+    height: 80px;
+    min-height: 80px;
+    flex-shrink: 0;
     display: flex;
     background: rgba(0, 0, 0, 0.8);
     border-bottom: 3px solid #3498db;
@@ -128,9 +130,11 @@ html, body {
 }
 
 
-/* 敌人介绍区域 */
+/* 敌人介绍区域 - 增加高度 */
 .enemy-intro-section {
-    height: 28vh;
+    height: 280px;
+    min-height: 280px;
+    flex-shrink: 0;
     background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
     border: 3px solid #9b59b6;
     border-left: none;
@@ -205,11 +209,10 @@ html, body {
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
-/* 中间战场区域 - 调整高度 */
+/* 中间战场区域 - 增加高度 */
 #battlefield {
-    height: 28vh;
-    min-height: 28vh;
-    max-height: 28vh;
+    height: 280px;
+    min-height: 280px;
     flex-shrink: 0;
     background: linear-gradient(180deg, #87ceeb 0%, #98fb98 30%, #f0e68c 70%, #deb887 100%);
     border: 4px solid #8b4513;
@@ -229,31 +232,31 @@ html, body {
     border-radius: 0;
 }
 
-/* 下方操作区域 - 精确60% */
+/* 下方操作区域 - flex填充剩余空间，增加最小高度 */
 #control-area {
-    height: 60vh;
-    min-height: 60vh;
-    max-height: 60vh;
+    flex: 1;
+    min-height: 400px;
     background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
     padding: 12px;
     display: flex;
     flex-direction: column;
     position: relative;
-    overflow: hidden;
-    gap: 4px;
+    overflow-y: auto;
+    gap: 8px;
 }
 
-/* 商店区域 - 占22%垂直空间 */
+/* 商店区域 - 增加高度 */
 .shop-section {
-    height: 22%;
+    height: 140px;
+    min-height: 140px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
     transition: all 0.3s ease;
     border: 2px solid rgba(155, 89, 182, 0.3);
     border-radius: 8px;
-    padding: 6px;
-    margin-bottom: 4px;
+    padding: 8px;
+    margin-bottom: 8px;
     background: rgba(52, 73, 94, 0.2);
 }
 
@@ -436,17 +439,18 @@ html, body {
     box-shadow: 0 3px 8px rgba(142, 68, 173, 0.3);
 }
 
-/* 背包界面样式 */
+/* 背包界面样式 - 增加高度 */
 .backpack-section {
-    height: 15%;
+    height: 120px;
+    min-height: 120px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
     background: rgba(52, 73, 94, 0.95);
     border: 2px solid rgba(155, 89, 182, 0.6);
     border-radius: 8px;
-    padding: 6px;
-    margin-bottom: 4px;
+    padding: 8px;
+    margin-bottom: 8px;
     backdrop-filter: blur(5px);
 }
 
@@ -539,15 +543,16 @@ html, body {
     margin-top: 5px;
 }
 
-/* 战斗区域 - 占17.5%垂直空间 */
+/* 战斗区域 - 增加高度 */
 .inventory-section {
-    height: 17.5%;
+    height: 120px;
+    min-height: 120px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
     border: 2px solid rgba(76, 175, 80, 0.3);
     border-radius: 8px;
-    padding: 6px;
+    padding: 8px;
     background: rgba(52, 73, 94, 0.2);
 }
 
@@ -953,42 +958,35 @@ html, body {
 }
 
 @media (max-width: 480px) {
-    /* 超小屏幕进一步优化 */
+    /* 超小屏幕进一步优化 - 只调整间距和字体 */
     #top-info {
-        height: 10vh;
         padding: 5px;
     }
     
     .enemy-intro-section {
-        height: 25vh;
         padding: 10px;
     }
     
-    #battlefield {
-        height: 25vh;
-        min-height: 25vh;
-        max-height: 25vh;
-    }
-    
     #control-area {
-        height: 40vh;
-        min-height: 40vh;
-        max-height: 40vh;
         padding: 8px;
+        min-height: 250px; /* 减少最小高度 */
     }
     
     .shop-section {
-        height: 25%;
+        height: 110px; /* 稍微减小 */
+        min-height: 110px;
         padding: 4px;
     }
     
     .inventory-section {
-        height: 20%;
+        height: 90px; /* 稍微减小 */
+        min-height: 90px;
         padding: 4px;
     }
     
     .backpack-section {
-        height: 18%;
+        height: 90px; /* 稍微减小 */
+        min-height: 90px;
         padding: 4px;
     }
     
