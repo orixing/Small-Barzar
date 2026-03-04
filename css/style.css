@@ -955,6 +955,22 @@ html, body {
         font-size: 13px;
         min-height: 40px;
     }
+    
+    /* 增加商店和战斗区高度 */
+    .shop-section {
+        height: 140px;
+        min-height: 140px;
+    }
+    
+    .inventory-section {
+        height: 135px;
+        min-height: 135px;
+    }
+    
+    .backpack-section {
+        height: 135px;
+        min-height: 135px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -967,28 +983,7 @@ html, body {
         padding: 10px;
     }
     
-    #control-area {
-        padding: 8px;
-        min-height: 250px; /* 减少最小高度 */
-    }
     
-    .shop-section {
-        height: 110px; /* 稍微减小 */
-        min-height: 110px;
-        padding: 4px;
-    }
-    
-    .inventory-section {
-        height: 90px; /* 稍微减小 */
-        min-height: 90px;
-        padding: 4px;
-    }
-    
-    .backpack-section {
-        height: 90px; /* 稍微减小 */
-        min-height: 90px;
-        padding: 4px;
-    }
     
     /* 更小的字体 */
     .shop-header h3, .inventory-header h3 {
