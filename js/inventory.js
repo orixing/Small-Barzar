@@ -163,7 +163,7 @@ class InventorySystem {
                 unitCount: 0, // 不召唤单位
                 cooldown: -1, // 被动物品
                 minQuality: 1,
-                description: '全场魔法物品攻击力+10，法杖出战获胜后加成增强'
+                description: '全场魔法物品攻击力+5，法杖出战获胜后加成增强'
             },
             shield: {
                 name: '盾牌',
@@ -459,40 +459,70 @@ class InventorySystem {
         const usedItems = new Set();
         
         if (this.isFirstShopGeneration) {
-            // 第一次生成：100%概率学徒+水元素+弓箭手（魔法组合）
-            console.log('第一次生成商店，固定包含学徒、水元素和弓箭手');
+            // 第一次生成：50%概率刺客+骑兵+法杖，50%概率学徒+战士+水元素
+            const useNearCombat = Math.random() < 0.5; // 50%概率选择近战组合
             
-            // 添加学徒（绿色品质）
-            this.shopItems.push({
-                id: 'apprentice',
-                template: this.itemTemplates.apprentice,
-                quality: 1, // 绿色品质
-                available: true
-            });
-            usedItems.add('apprentice');
-            
-            // 添加水元素（绿色品质）
-            this.shopItems.push({
-                id: 'waterElemental',
-                template: this.itemTemplates.waterElemental,
-                quality: 1, // 绿色品质
-                available: true
-            });
-            usedItems.add('waterElemental');
-            
-            // 添加弓箭手（绿色品质）
-            this.shopItems.push({
-                id: 'bow',
-                template: this.itemTemplates.bow,
-                quality: 1, // 绿色品质
-                available: true
-            });
-            usedItems.add('bow');
+            if (useNearCombat) {
+                console.log('第一次生成商店，选择近战组合：刺客+骑兵+法杖');
+                
+                // 添加刺客（绿色品质）
+                this.shopItems.push({
+                    id: 'assassin',
+                    template: this.itemTemplates.assassin,
+                    quality: 1, // 绿色品质
+                    available: true
+                });
+                
+                // 添加骑兵（绿色品质）
+                this.shopItems.push({
+                    id: 'cavalry',
+                    template: this.itemTemplates.cavalry,
+                    quality: 1, // 绿色品质
+                    available: true
+                });
+                
+                // 添加法杖（绿色品质）
+                this.shopItems.push({
+                    id: 'staff',
+                    template: this.itemTemplates.staff,
+                    quality: 1, // 绿色品质
+                    available: true
+                });
+                
+            } else {
+                console.log('第一次生成商店，选择魔法组合：学徒+战士+水元素');
+                
+                // 添加学徒（绿色品质）
+                this.shopItems.push({
+                    id: 'apprentice',
+                    template: this.itemTemplates.apprentice,
+                    quality: 1, // 绿色品质
+                    available: true
+                });
+                
+                // 添加战士（绿色品质）
+                this.shopItems.push({
+                    id: 'warrior',
+                    template: this.itemTemplates.warrior,
+                    quality: 1, // 绿色品质
+                    available: true
+                });
+                
+                // 添加水元素（绿色品质）
+                this.shopItems.push({
+                    id: 'waterElemental',
+                    template: this.itemTemplates.waterElemental,
+                    quality: 1, // 绿色品质
+                    available: true
+                });
+            }
             
             this.isFirstShopGeneration = false; // 标记已完成第一次生成
         } else {
-            // 后续生成：使用原来的随机逻辑
-            const itemKeys = Object.keys(this.itemTemplates);
+            // 后续生成：使用原来的随机逻辑（排除弓箭手和盾牌兵）
+            const itemKeys = Object.keys(this.itemTemplates).filter(key => 
+                key !== 'bow' && key !== 'shield'
+            );
             
             // 权重系统：1×1物品更常见
             const sizeWeights = {
@@ -866,7 +896,7 @@ class InventorySystem {
                     barbarianBonus: 0, // 野蛮人特殊技能：品质攻击力加成（已弃用）
                     barbarianAdjacentBonus: 0, // 来自相邻野蛮人的攻击力加成
                     apprenticeBonus: 0, // 学徒特殊技能：魔法物品数量攻击力加成
-                    staffMageBonus: 10, // 法杖特殊技能：魔法物品攻击力加成（基础+10）
+                    staffMageBonus: 5, // 法杖特殊技能：魔法物品攻击力加成（基础+10）
                     staffWinBonus: 0, // 法杖特殊技能：每次获胜的额外加成累积
                     golemAdjacentBonus: 0, // 魔偶特殊技能：相邻魔法单位攻击力加成
                     alchemyGoldGeneration: 1, // 炼金工房特殊技能：每次产生的金币数
@@ -3057,7 +3087,7 @@ class InventorySystem {
                 militiaBonus: 0, // 民兵团特殊技能：额外单位计数器
                 barbarianBonus: 0, // 野蛮人特殊技能：品质攻击力加成
                 apprenticeBonus: 0, // 学徒特殊技能：魔法单位数量攻击力加成
-                staffMageBonus: 10, // 法杖特殊技能：魔法单位攻击力加成（基础+10）
+                staffMageBonus: 5, // 法杖特殊技能：魔法单位攻击力加成（基础+10）
                 staffWinBonus: 0, // 法杖特殊技能：每次获胜的额外加成累积
                 gladiatorBonus: 0, // 角斗士特殊技能：战斗攻击力加成
                 accelerationTime: 0, // 战旗加速剩余时间
@@ -3120,7 +3150,7 @@ class InventorySystem {
                     barbarianBonus: 0, // 野蛮人特殊技能：品质攻击力加成（已弃用）
                     barbarianAdjacentBonus: 0, // 来自相邻野蛮人的攻击力加成
                     apprenticeBonus: 0, // 学徒特殊技能：魔法物品数量攻击力加成
-                    staffMageBonus: 10, // 法杖特殊技能：魔法物品攻击力加成（基础+10）
+                    staffMageBonus: 5, // 法杖特殊技能：魔法物品攻击力加成（基础+10）
                     staffWinBonus: 0, // 法杖特殊技能：每次获胜的额外加成累积
                     gladiatorBonus: 0, // 角斗士特殊技能：战斗攻击力加成
                     giantHealthBonus: 0, // 巨人升级效果：品质生命值加成
@@ -3466,7 +3496,7 @@ class InventorySystem {
             
             const skillDescElement = document.getElementById('skill-description');
             if (skillDescElement) {
-                const baseBonus = item.staffMageBonus || 10;
+                const baseBonus = item.staffMageBonus || 5;
                 const winBonus = item.staffWinBonus || 0;
                 const winBonusPerVictory = this.getStaffWinBonus(item.quality);
                 
@@ -4029,7 +4059,7 @@ class InventorySystem {
             4: 20,  // 橙色
             5: 25   // 红色
         };
-        return bonusMap[quality] || 10; // 默认加成为10
+        return bonusMap[quality] || 5; // 默认加成为10
     }
     
     // 魔偶品质对应的相邻魔法物品攻击力加成
@@ -4225,7 +4255,7 @@ class InventorySystem {
             const staffItem = this.inventory[i];
             if (staffItem && staffItem !== 'occupied' && staffItem.id === 'staff') {
                 // 计算当前法杖的总加成：基础加成 + 获胜累积加成
-                const baseBonus = staffItem.staffMageBonus || 10;
+                const baseBonus = staffItem.staffMageBonus || 5;
                 const winBonus = staffItem.staffWinBonus || 0;
                 const totalStaffBonus = baseBonus + winBonus;
                 
@@ -4311,11 +4341,11 @@ class InventorySystem {
     // 获取实验室品质对应的每个魔法物品加成值
     getLaboratoryQualityBonus(quality) {
         const bonusMap = {
-            3: 4,  // 紫色：每个魔法物品+4攻击力
-            4: 6,  // 橙色：每个魔法物品+6攻击力
-            5: 8   // 红色：每个魔法物品+8攻击力
+            3: 3,  // 紫色：每个魔法物品+3攻击力
+            4: 5,  // 橙色：每个魔法物品+5攻击力
+            5: 7   // 红色：每个魔法物品+7攻击力
         };
-        return bonusMap[quality] || 4;
+        return bonusMap[quality] || 3;
     }
     
     // 统一的加速处理函数（用于魔力水晶被加速检测）
@@ -4756,7 +4786,7 @@ class InventorySystem {
             orange: 10,  // 橙色升级效果：+10
             red: 15      // 红色升级效果：+15
         };
-        return bonusMap[quality] || 10;
+        return bonusMap[quality] || 5;
     }
     
     // 检查并增强相邻位置的武士攻击力（当有近战单位召唤时触发）
@@ -4855,7 +4885,7 @@ class InventorySystem {
             4: 20,  // 橙色 +20
             5: 25   // 红色 +25
         };
-        return bonusMap[quality] || 10;
+        return bonusMap[quality] || 5;
     }
     
     // 宝剑特殊技能：触发时为相邻的近战物品增加攻击力
@@ -5246,7 +5276,7 @@ class InventorySystem {
                 militiaBonus: 0, // 民兵团特殊技能：额外单位计数器
                 barbarianBonus: 0, // 野蛮人特殊技能：品质攻击力加成
                 apprenticeBonus: 0, // 学徒特殊技能：魔法单位数量攻击力加成
-                staffMageBonus: 10, // 法杖特殊技能：魔法单位攻击力加成（基础+10）
+                staffMageBonus: 5, // 法杖特殊技能：魔法单位攻击力加成（基础+10）
                 staffWinBonus: 0, // 法杖特殊技能：每次获胜的额外加成累积
                 gladiatorBonus: 0, // 角斗士特殊技能：战斗攻击力加成
                 giantHealthBonus: 0, // 巨人升级效果：品质生命值加成

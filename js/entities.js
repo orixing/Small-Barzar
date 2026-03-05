@@ -158,18 +158,18 @@ class Unit {
                 
                 // 其他兵种
                 bow: 20,         // 弓箭手
-                staff: 35,       // 法师
+                staff: 25,       // 法师
                 shield: 20,      // 盾牌
                 
                 // 魔法单位 - 根据JSON配置
-                apprentice: 20,      // 学徒 JSON: 20
-                waterElemental: 40,  // 水元素 JSON: 40
-                golem: 40,           // 魔偶 JSON: 40
-                golemArcane: 100,    // 奥数魔像 JSON: 100
-                archmage: 60,        // 大法师 JSON: 60
-                alchemist: 30,       // 药剂师 JSON: 30
-                witch: 20,           // 女巫 JSON: 20
-                dragonMagic: 80      // 魔法巨龙 JSON: 80
+                apprentice: 10,      // 学徒 JSON: 10
+                waterElemental: 30,  // 水元素 JSON: 30
+                golem: 30,           // 魔偶 JSON: 30
+                golemArcane: 90,     // 奥数魔像 JSON: 90
+                archmage: 50,        // 大法师 JSON: 50
+                alchemist: 20,       // 药剂师 JSON: 20
+                witch: 10,           // 女巫 JSON: 10
+                dragonMagic: 70      // 魔法巨龙 JSON: 70
             };
             
             if (specificAttackPower[this.itemId]) {
@@ -182,7 +182,7 @@ class Unit {
             melee: 25,
             ranged: 20,
             tank: 15,
-            mage: 35
+            mage: 25
         };
         return powers[this.type] || 20;
     }
@@ -192,7 +192,7 @@ class Unit {
             melee: 30,
             ranged: 80,
             tank: 35,
-            mage: 80
+            mage: 50
         };
         return ranges[this.type] || 50;
     }
