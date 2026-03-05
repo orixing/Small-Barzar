@@ -66,7 +66,8 @@ class Unit {
                 
                 // 魔法单位
                 apprentice: 8,  // 学徒
-                waterElemental: 10  // 水元素
+                waterElemental: 10,  // 水元素
+                alchemist: 8   // 药剂师
             };
             
             if (specificSpeeds[this.itemId]) {
@@ -110,7 +111,8 @@ class Unit {
                 
                 // 魔法单位
                 apprentice: 20,  // 学徒
-                waterElemental: 40  // 水元素
+                waterElemental: 40,  // 水元素
+                alchemist: 30   // 药剂师
             };
             
             if (specificAttackPower[this.itemId]) {
@@ -210,7 +212,9 @@ class Unit {
                 
                 // 魔法单位
                 apprentice: '🧝‍♂️',
-                waterElemental: '🌊'
+                waterElemental: '🌊',
+                golem: '🤖',
+                alchemist: '⚗️'
             };
             
             if (specificIcons[this.itemId]) {

@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(python3 -m http.server 8000)",
-      "Bash(git push -u origin master)"
+      "Bash(git push -u origin master)",
+      "Bash(curl -s http://localhost:8000)",
+      "Bash(node -c /mnt/e/Project/Test/js/inventory.js)",
+      "Bash(node -c /mnt/e/Project/Test/js/entities.js)",
+      "Bash(node -c /mnt/e/Project/Test/js/game.js)"
     ],
     "deny": [],
     "ask": []

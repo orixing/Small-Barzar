@@ -234,6 +234,39 @@ class InventorySystem {
                 cooldown: 480, // 8秒
                 minQuality: 1, // 绿色起始
                 description: '中型魔法单位'
+            },
+            golem: {
+                name: '魔偶',
+                icon: '🤖',
+                size: 2,
+                baseValue: 2,
+                unitType: 'mage',
+                unitCount: 1,
+                cooldown: 420, // 7秒
+                minQuality: 2, // 蓝色起始
+                description: '如果有相邻的魔法单位，攻击力大幅提升'
+            },
+            alchemist: {
+                name: '药剂师',
+                icon: '⚗️',
+                size: 1,
+                baseValue: 1,
+                unitType: 'mage',
+                unitCount: 1,
+                cooldown: 360, // 6秒
+                minQuality: 2, // 蓝色起始
+                description: '加速相邻魔法物品'
+            },
+            alchemyLab: {
+                name: '炼金工房',
+                icon: '🏭',
+                size: 3,
+                baseValue: 3,
+                unitType: 'mage',
+                unitCount: 0, // 不召唤单位
+                cooldown: 600, // 10秒
+                minQuality: 2, // 蓝色起始
+                description: '获得2金币，出售物品有额外收益'
             }
         };
         
@@ -299,8 +332,100 @@ class InventorySystem {
     
     // 初始化测试物品到背包
     initializeTestItems() {
-        // 不添加任何测试物品，保持背包为空
-        console.log('背包初始化完成：空背包');
+        // 添加药剂师到背包（蓝色品质）
+        const alchemistItem = {
+            id: 'alchemist',
+            template: this.itemTemplates.alchemist,
+            quality: 2, // 蓝色品质
+            cooldownRemaining: 0,
+            isReady: false,
+            attackBonus: 0,
+            cooldownReduction: 0,
+            meleeBonus: 0,
+            militiaBonus: 0,
+            barbarianBonus: 0,
+            barbarianAdjacentBonus: 0,
+            apprenticeBonus: 0,
+            staffMageBonus: 10,
+            staffWinBonus: 0,
+            golemAdjacentBonus: 0,
+            alchemyGoldGeneration: 1,
+            alchemySellBonus: 2,
+            accelerationTime: 0
+        };
+        
+        // 计算实际冷却时间
+        const alchemistCooldown = this.getActualCooldown(alchemistItem);
+        alchemistItem.cooldownRemaining = alchemistCooldown;
+        
+        // 添加魔偶到背包（蓝色品质）
+        const golemItem = {
+            id: 'golem',
+            template: this.itemTemplates.golem,
+            quality: 2, // 蓝色品质（起始品质）
+            cooldownRemaining: 0,
+            isReady: false,
+            attackBonus: 0,
+            cooldownReduction: 0,
+            meleeBonus: 0,
+            militiaBonus: 0,
+            barbarianBonus: 0,
+            barbarianAdjacentBonus: 0,
+            apprenticeBonus: 0,
+            staffMageBonus: 10,
+            staffWinBonus: 0,
+            golemAdjacentBonus: 0,
+            alchemyGoldGeneration: 1,
+            alchemySellBonus: 2,
+            accelerationTime: 0
+        };
+        
+        // 计算实际冷却时间
+        const golemCooldown = this.getActualCooldown(golemItem);
+        golemItem.cooldownRemaining = golemCooldown;
+        
+        // 添加炼金工房到背包（蓝色品质）
+        const alchemyLabItem = {
+            id: 'alchemyLab',
+            template: this.itemTemplates.alchemyLab,
+            quality: 2, // 蓝色品质
+            cooldownRemaining: 0,
+            isReady: false,
+            attackBonus: 0,
+            cooldownReduction: 0,
+            meleeBonus: 0,
+            militiaBonus: 0,
+            barbarianBonus: 0,
+            barbarianAdjacentBonus: 0,
+            apprenticeBonus: 0,
+            staffMageBonus: 10,
+            staffWinBonus: 0,
+            golemAdjacentBonus: 0,
+            alchemyGoldGeneration: 1, // 蓝色品质默认值
+            alchemySellBonus: 2, // 蓝色品质默认值
+            accelerationTime: 0
+        };
+        
+        // 计算实际冷却时间
+        const alchemyLabCooldown = this.getActualCooldown(alchemyLabItem);
+        alchemyLabItem.cooldownRemaining = alchemyLabCooldown;
+        
+        // 将药剂师放在背包第0格
+        this.backpack[0] = alchemistItem;
+        
+        // 将魔偶放在背包第1-2格（大小为2）
+        this.backpack[1] = golemItem;
+        this.backpack[2] = 'occupied';
+        
+        // 将炼金工房放在背包第3-5格（大小为3）
+        this.backpack[3] = alchemyLabItem;
+        this.backpack[4] = 'occupied';
+        this.backpack[5] = 'occupied';
+        
+        console.log('背包初始化完成：添加了药剂师(蓝色)、魔偶(蓝色)和炼金工房(蓝色)');
+        
+        // 更新背包显示
+        this.updateBackpackDisplay();
     }
     
     init() {
@@ -310,7 +435,6 @@ class InventorySystem {
         }, 100);
         
         this.bindEvents();
-        this.addTestUnits(); // 添加测试单位
     }
     
     bindEvents() {
@@ -611,6 +735,11 @@ class InventorySystem {
             if (item.id === 'staff') {
                 this.applyStaffBonus();
             }
+            
+            // 如果是魔偶升级，刷新魔偶效果
+            if (item.id === 'golem') {
+                this.applyGolemAdjacentBonus();
+            }
         }
     }
     
@@ -762,6 +891,9 @@ class InventorySystem {
                     apprenticeBonus: 0, // 学徒特殊技能：魔法单位数量攻击力加成
                     staffMageBonus: 10, // 法杖特殊技能：魔法单位攻击力加成（基础+10）
                     staffWinBonus: 0, // 法杖特殊技能：每次获胜的额外加成累积
+                    golemAdjacentBonus: 0, // 魔偶特殊技能：相邻魔法单位攻击力加成
+                    alchemyGoldGeneration: 1, // 炼金工房特殊技能：每次产生的金币数
+                    alchemySellBonus: 2, // 炼金工房特殊技能：出售物品额外金币数
                     accelerationTime: 0 // 战旗加速剩余时间
                 };
                 
@@ -779,6 +911,14 @@ class InventorySystem {
                 if (item.id === 'giant') {
                     const qualityLevelsAboveMin = item.quality - template.minQuality;
                     item.giantHealthBonus = qualityLevelsAboveMin * 100; // 每提升一个品质+100生命值
+                }
+                
+                // 为炼金工房计算品质升级效果（相对于起始品质）
+                if (item.id === 'alchemyLab') {
+                    const qualityLevelsAboveMin = item.quality - template.minQuality;
+                    // 蓝1+2，紫2+3，橙3+4，红4+5
+                    item.alchemyGoldGeneration = 1 + qualityLevelsAboveMin;
+                    item.alchemySellBonus = 2 + qualityLevelsAboveMin;
                 }
                 
                 
@@ -931,6 +1071,14 @@ class InventorySystem {
                         item.giantHealthBonus = qualityLevelsAboveMin * 100; // 每提升一个品质+100生命值
                     }
                     
+                    // 为炼金工房计算品质升级效果（相对于起始品质）
+                    if (item.id === 'alchemyLab') {
+                        const qualityLevelsAboveMin = item.quality - template.minQuality;
+                        // 蓝1+2，紫2+3，橙3+4，红4+5
+                        item.alchemyGoldGeneration = 1 + qualityLevelsAboveMin;
+                        item.alchemySellBonus = 2 + qualityLevelsAboveMin;
+                    }
+                    
                     // 自动找位置放入背包
                     this.addItemToBackpackAutoSlot(item);
                     
@@ -992,6 +1140,9 @@ class InventorySystem {
         
         // 刷新法杖效果
         this.applyStaffBonus();
+        
+        // 刷新魔偶效果
+        this.applyGolemAdjacentBonus();
     }
     
     addItemToInventoryAtSlot(item, targetSlot) {
@@ -1011,6 +1162,11 @@ class InventorySystem {
             this.applyBadgeEffect(targetSlot);
         }
         
+        // 魔偶被动效果：放置时立即检查相邻魔法单位
+        if (item.id === 'golem') {
+            this.applyGolemAdjacentBonus();
+        }
+        
         // 如果是近战物品，检查右侧是否有徽章
         if (item.template.unitType === 'melee') {
             this.checkRightBadge(targetSlot);
@@ -1027,6 +1183,9 @@ class InventorySystem {
         
         // 刷新法杖效果
         this.applyStaffBonus();
+        
+        // 刷新魔偶效果
+        this.applyGolemAdjacentBonus();
     }
     
     useItem(slotIndex) {
@@ -1067,6 +1226,17 @@ class InventorySystem {
         // 战旗特殊处理：触发全场近战单位加速
         if (item.id === 'warBanner') {
             this.triggerWarBannerAcceleration();
+            return;
+        }
+        
+        // 药剂师特殊处理：召唤时加速相邻魔法物品
+        if (item.id === 'alchemist') {
+            this.triggerAlchemistAcceleration(itemSlot);
+        }
+        
+        // 炼金工房特殊处理：产生金币
+        if (item.id === 'alchemyLab') {
+            this.triggerAlchemyLabGoldGeneration(item);
             return;
         }
         
@@ -1342,6 +1512,9 @@ class InventorySystem {
                             
                             // 刷新法杖效果（因为物品位置改变了）
                             this.applyStaffBonus();
+                            
+                            // 刷新魔偶效果（因为物品位置改变了）
+                            this.applyGolemAdjacentBonus();
                             
                             // 清除拖拽状态
                             this.draggedItem = null;
@@ -1684,8 +1857,16 @@ class InventorySystem {
         // 计算出售价格（价值的一半）
         const sellPrice = this.getItemSellPrice(item.template, item.quality);
         
+        // 计算炼金工房出售加成
+        const alchemyBonus = this.getAlchemySellBonus();
+        const totalGold = sellPrice + alchemyBonus;
+        
         // 获得金币
-        this.game.playerGold += sellPrice;
+        this.game.playerGold += totalGold;
+        
+        if (alchemyBonus > 0) {
+            console.log(`炼金工房出售加成：+${alchemyBonus}金币`);
+        }
         
         // 从背包中移除物品
         this.removeItemFromInventory(slotIndex);
@@ -1722,8 +1903,16 @@ class InventorySystem {
         // 计算出售价格（价值的一半）
         const sellPrice = this.getItemSellPrice(this.draggedItem.template, this.draggedItem.quality);
         
+        // 计算炼金工房出售加成
+        const alchemyBonus = this.getAlchemySellBonus();
+        const totalGold = sellPrice + alchemyBonus;
+        
         // 获得金币
-        this.game.playerGold += sellPrice;
+        this.game.playerGold += totalGold;
+        
+        if (alchemyBonus > 0) {
+            console.log(`炼金工房出售加成：+${alchemyBonus}金币`);
+        }
         
         // 显示出售效果
         this.showSellEffect(sellPrice);
@@ -2555,6 +2744,9 @@ class InventorySystem {
         // 刷新法杖效果（因为物品从战斗区移除了）
         this.applyStaffBonus();
         
+        // 刷新魔偶效果（因为物品从战斗区移除了）
+        this.applyGolemAdjacentBonus();
+        
         return true;
     }
     
@@ -2737,6 +2929,9 @@ class InventorySystem {
         // 刷新法杖效果（物品位置变化可能影响法杖效果）
         this.applyStaffBonus();
         
+        // 刷新魔偶效果（物品位置变化可能影响魔偶效果）
+        this.applyGolemAdjacentBonus();
+        
         // 更新显示
         this.updateInventoryDisplay();
         this.updateBackpackDisplay();
@@ -2831,6 +3026,14 @@ class InventorySystem {
             if (newItem.id === 'giant') {
                 const qualityLevelsAboveMin = newItem.quality - template.minQuality;
                 newItem.giantHealthBonus = qualityLevelsAboveMin * 100; // 每提升一个品质+100生命值
+            }
+            
+            // 为炼金工房计算品质升级效果（相对于起始品质）
+            if (newItem.id === 'alchemyLab') {
+                const qualityLevelsAboveMin = newItem.quality - template.minQuality;
+                // 蓝1+2，紫2+3，橙3+4，红4+5
+                newItem.alchemyGoldGeneration = 1 + qualityLevelsAboveMin;
+                newItem.alchemySellBonus = 2 + qualityLevelsAboveMin;
             }
             
             
@@ -3220,6 +3423,49 @@ class InventorySystem {
             if (skillStatusElement) {
                 skillStatusElement.style.display = 'none';
             }
+        } else if (item.id === 'golem' && specialSkillElement) {
+            specialSkillElement.classList.remove('hidden');
+            specialSkillElement.classList.add('passive'); // 被动效果，添加分割线
+            
+            const skillDescElement = document.getElementById('skill-description');
+            if (skillDescElement) {
+                const qualityBonus = this.getGolemAdjacentBonus(item.quality);
+                skillDescElement.innerHTML = `如果有相邻的<span class="mage-badge">魔法</span>单位，攻击力 <span style="color: white; font-weight: bold;">+${qualityBonus}</span>`;
+            }
+            
+            const skillStatusElement = document.getElementById('skill-status');
+            if (skillStatusElement) {
+                skillStatusElement.style.display = 'none';
+            }
+        } else if (item.id === 'alchemist' && specialSkillElement) {
+            specialSkillElement.classList.remove('hidden');
+            specialSkillElement.classList.remove('passive'); // 主动效果，无分割线
+            
+            const skillDescElement = document.getElementById('skill-description');
+            if (skillDescElement) {
+                skillDescElement.innerHTML = `为相邻<span class="mage-badge">魔法</span>物品 <span style="color: #17a2b8; font-weight: bold;">加速1秒</span>`;
+            }
+            
+            const skillStatusElement = document.getElementById('skill-status');
+            if (skillStatusElement) {
+                skillStatusElement.style.display = 'none';
+            }
+        } else if (item.id === 'alchemyLab' && specialSkillElement) {
+            specialSkillElement.classList.remove('hidden');
+            specialSkillElement.classList.remove('passive'); // 主动效果，无分割线
+            
+            const skillDescElement = document.getElementById('skill-description');
+            if (skillDescElement) {
+                const goldAmount = item.alchemyGoldGeneration || 1;
+                const sellBonus = item.alchemySellBonus || 2;
+                skillDescElement.innerHTML = `获得 <span style="color: #f1c40f; font-weight: bold;">${goldAmount}金币</span><br>` +
+                                           `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">即使在背包也生效，出售物品额外<span style="color: #f1c40f; font-weight: bold;">+${sellBonus}金币</span></div>`;
+            }
+            
+            const skillStatusElement = document.getElementById('skill-status');
+            if (skillStatusElement) {
+                skillStatusElement.style.display = 'none';
+            }
         } else if (specialSkillElement) {
             specialSkillElement.classList.add('hidden');
             specialSkillElement.classList.remove('passive'); // 清除样式类
@@ -3343,7 +3589,9 @@ class InventorySystem {
                 
                 // 魔法单位
                 apprentice: { health: 100, attack: 20, range: 120, speed: 8, baseDamage: 20 },  // 小型魔法单位
-                waterElemental: { health: 200, attack: 40, range: 120, speed: 10, baseDamage: 40 }  // 中型魔法单位
+                waterElemental: { health: 200, attack: 40, range: 120, speed: 10, baseDamage: 40 },  // 中型魔法单位
+                golem: { health: 200, attack: 40, range: 120, speed: 8, baseDamage: 40 },  // 中型魔法单位
+                alchemist: { health: 100, attack: 30, range: 120, speed: 8, baseDamage: 20 }  // 小型魔法单位
             };
             
             if (specificStats[unitKey]) {
@@ -3374,8 +3622,8 @@ class InventorySystem {
                     stats.attack += item.apprenticeBonus;
                 }
                 
-                // 法杖技能：添加魔法单位攻击力加成（适用于所有魔法单位）
-                if (item && item.staffBonus && item.template.unitType === 'mage' && item.template.unitCount > 0) {
+                // 法杖技能：添加魔法物品攻击力加成（适用于所有魔法物品）
+                if (item && item.staffBonus && item.template.unitType === 'mage') {
                     stats.attack += item.staffBonus;
                 }
                 
@@ -3387,6 +3635,11 @@ class InventorySystem {
                 // 武士特殊技能：添加相邻召唤攻击力加成
                 if (unitKey === 'swordmaster' && item && item.swordmasterBonus) {
                     stats.attack += item.swordmasterBonus;
+                }
+                
+                // 魔偶特殊技能：添加相邻魔法单位攻击力加成
+                if (unitKey === 'golem' && item && item.golemAdjacentBonus) {
+                    stats.attack += item.golemAdjacentBonus;
                 }
                 
                 // 宝剑等支援物品的通用攻击力加成
@@ -3615,6 +3868,18 @@ class InventorySystem {
         return bonusMap[quality] || 10; // 默认加成为10
     }
     
+    // 魔偶品质对应的相邻魔法单位攻击力加成
+    getGolemAdjacentBonus(quality) {
+        // 品质等级对应的攻击力加成：蓝+40，紫+80，橙+120，红+160
+        const bonusMap = {
+            2: 40,  // 蓝色（起始品质）
+            3: 80,  // 紫色
+            4: 120, // 橙色
+            5: 160  // 红色
+        };
+        return bonusMap[quality] || 40; // 默认加成为40（蓝色品质）
+    }
+    
     // 获取学徒品质对应的每魔法单位攻击力加成
     getApprenticeQualityBonus(quality) {
         // 品质等级对应的每魔法单位攻击力加成
@@ -3656,42 +3921,90 @@ class InventorySystem {
         this.updateInventoryDisplay();
     }
     
-    // 应用单个野蛮人的效果（参考徽章的 applyBadgeEffect）
+    // 应用单个野蛮人的效果（使用通用相邻查找函数）
     applySingleBarbarianEffect(barbarianSlot) {
         const barbarianItem = this.inventory[barbarianSlot];
         if (!barbarianItem || barbarianItem.id !== 'barbarian') return;
         
         const bonus = this.getBarbarianQualityBonus(barbarianItem.quality);
         
-        // 检查左侧位置
-        const leftSlot = barbarianSlot - 1;
-        if (leftSlot >= 0) {
-            const leftItem = this.inventory[leftSlot];
+        // 使用通用相邻查找函数，过滤近战单位
+        const adjacentMeleeItems = this.findAdjacentItems(
+            barbarianSlot, 
+            barbarianItem.template.size, // 考虑野蛮人的尺寸
+            (item) => item.template.unitType === 'melee'
+        );
+        
+        for (const adjacent of adjacentMeleeItems) {
+            const { item: targetItem, position } = adjacent;
             
-            if (leftItem === 'occupied') {
-                // 左侧被占用，查找这个被占用格子属于哪个物品
-                const actualItem = this.findItemByOccupiedSlot(leftSlot);
-                if (actualItem && actualItem.template.unitType === 'melee') {
-                    actualItem.barbarianAdjacentBonus = (actualItem.barbarianAdjacentBonus || 0) + bonus;
-                    console.log(`野蛮人为左侧被占用格子的近战物品(${actualItem.id})提供攻击力加成 +${bonus}`);
-                }
-            } else if (leftItem && leftItem.template.unitType === 'melee') {
-                // 左侧是实际的近战物品
-                leftItem.barbarianAdjacentBonus = (leftItem.barbarianAdjacentBonus || 0) + bonus;
-                console.log(`野蛮人为左侧近战物品(位置${leftSlot}, ${leftItem.id})提供攻击力加成 +${bonus}`);
+            targetItem.barbarianAdjacentBonus = (targetItem.barbarianAdjacentBonus || 0) + bonus;
+            console.log(`野蛮人为${position}侧近战物品(${targetItem.id})提供攻击力加成 +${bonus}`);
+        }
+    }
+    
+    // 应用魔偶的相邻魔法单位攻击力加成效果
+    applyGolemAdjacentBonus() {
+        // 清除所有魔偶的相邻加成
+        for (let i = 0; i < this.inventory.length; i++) {
+            const item = this.inventory[i];
+            if (item && item !== 'occupied' && item.golemAdjacentBonus) {
+                item.golemAdjacentBonus = 0;
             }
         }
         
-        // 检查右侧位置
-        const rightSlot = barbarianSlot + barbarianItem.template.size;
-        if (rightSlot < this.inventory.length) {
-            const rightItem = this.inventory[rightSlot];
-            
-            if (rightItem && rightItem !== 'occupied' && rightItem.template.unitType === 'melee') {
-                rightItem.barbarianAdjacentBonus = (rightItem.barbarianAdjacentBonus || 0) + bonus;
-                console.log(`野蛮人为右侧近战物品(位置${rightSlot}, ${rightItem.id})提供攻击力加成 +${bonus}`);
+        // 重新应用魔偶相邻加成
+        for (let i = 0; i < this.inventory.length; i++) {
+            const golemItem = this.inventory[i];
+            if (golemItem && golemItem !== 'occupied' && golemItem.id === 'golem') {
+                // 检查相邻位置是否有魔法单位
+                const hasAdjacentMage = this.hasAdjacentMageUnit(i);
+                if (hasAdjacentMage) {
+                    const bonus = this.getGolemAdjacentBonus(golemItem.quality);
+                    golemItem.golemAdjacentBonus = bonus;
+                    console.log(`魔偶(位置${i})检测到相邻魔法物品，获得攻击力加成 +${bonus}`);
+                } else {
+                    console.log(`魔偶(位置${i})没有相邻的魔法物品，无加成`);
+                }
             }
         }
+        
+        // 更新显示
+        this.updateInventoryDisplay();
+    }
+    
+    // 检查指定位置是否有相邻的魔法单位
+    hasAdjacentMageUnit(slotIndex) {
+        const item = this.inventory[slotIndex];
+        if (!item || item === 'occupied') return false;
+        
+        // 使用通用相邻查找函数，过滤魔法物品（包括召唤和非召唤的魔法物品）
+        const adjacentMageItems = this.findAdjacentItems(
+            slotIndex, 
+            item.template.size, // 考虑物品尺寸
+            (targetItem) => targetItem.template.unitType === 'mage' // 移除unitCount限制，支持所有魔法物品
+        );
+        
+        if (adjacentMageItems.length > 0) {
+            for (const adjacent of adjacentMageItems) {
+                console.log(`魔偶(位置${slotIndex})${adjacent.position}侧发现魔法物品: ${adjacent.item.id}`);
+            }
+            return true;
+        } else {
+            console.log(`魔偶(位置${slotIndex})未发现相邻魔法物品`);
+            return false;
+        }
+    }
+    
+    // 查找物品在inventory中的位置索引
+    findItemSlot(targetItem) {
+        for (let i = 0; i < this.inventory.length; i++) {
+            const item = this.inventory[i];
+            if (item === targetItem) {
+                return i;
+            }
+        }
+        return -1; // 未找到
     }
     
     // 应用学徒的魔法单位加成效果
@@ -3708,13 +4021,12 @@ class InventorySystem {
         for (let i = 0; i < this.inventory.length; i++) {
             const apprenticeItem = this.inventory[i];
             if (apprenticeItem && apprenticeItem !== 'occupied' && apprenticeItem.id === 'apprentice') {
-                // 计算当前战斗区中的魔法单位数量
+                // 计算当前战斗区中的魔法物品数量（包括召唤和非召唤的魔法物品）
                 let mageUnitCount = 0;
                 for (let j = 0; j < this.inventory.length; j++) {
                     const item = this.inventory[j];
                     if (item && item !== 'occupied' && 
-                        item.template.unitType === 'mage' && 
-                        item.template.unitCount > 0) {
+                        item.template.unitType === 'mage') {
                         mageUnitCount++;
                     }
                 }
@@ -3723,7 +4035,7 @@ class InventorySystem {
                 const bonusPerUnit = this.getApprenticeQualityBonus(apprenticeItem.quality);
                 const totalBonus = mageUnitCount * bonusPerUnit;
                 apprenticeItem.apprenticeBonus = totalBonus;
-                console.log(`学徒检测到${mageUnitCount}个魔法单位，获得攻击力加成 +${totalBonus} (${bonusPerUnit}×${mageUnitCount})`);
+                console.log(`学徒检测到${mageUnitCount}个魔法物品，获得攻击力加成 +${totalBonus} (${bonusPerUnit}×${mageUnitCount})`);
             }
         }
         
@@ -3733,10 +4045,10 @@ class InventorySystem {
     
     // 应用法杖的魔法单位攻击力加成效果
     applyStaffBonus() {
-        // 清除所有魔法单位的法杖攻击力加成
+        // 清除所有魔法物品的法杖攻击力加成
         for (let i = 0; i < this.inventory.length; i++) {
             const item = this.inventory[i];
-            if (item && item !== 'occupied' && item.template.unitType === 'mage' && item.template.unitCount > 0) {
+            if (item && item !== 'occupied' && item.template.unitType === 'mage') {
                 // 移除法杖加成（保留其他加成）
                 if (item.staffBonus) {
                     item.staffBonus = 0;
@@ -3753,12 +4065,11 @@ class InventorySystem {
                 const winBonus = staffItem.staffWinBonus || 0;
                 const totalStaffBonus = baseBonus + winBonus;
                 
-                // 为所有魔法单位添加法杖攻击力加成
+                // 为所有魔法物品添加法杖攻击力加成
                 for (let j = 0; j < this.inventory.length; j++) {
                     const mageItem = this.inventory[j];
                     if (mageItem && mageItem !== 'occupied' && 
-                        mageItem.template.unitType === 'mage' && 
-                        mageItem.template.unitCount > 0) {
+                        mageItem.template.unitType === 'mage') {
                         
                         // 初始化staffBonus属性
                         if (!mageItem.staffBonus) {
@@ -4100,23 +4411,24 @@ class InventorySystem {
         if (!swordItem || swordItem.id !== 'magicSword') return;
         
         const bonus = this.getMagicSwordBonus(swordItem.quality);
-        const adjacentSlots = [swordSlot - 1, swordSlot + 1];
-        let affectedCount = 0;
         
-        for (const slot of adjacentSlots) {
-            if (slot >= 0 && slot < 6) {
-                const adjacentItem = this.inventory[slot];
-                if (adjacentItem && adjacentItem !== 'occupied' && adjacentItem.template.unitType === 'melee') {
-                    // 为相邻近战物品永久增加攻击力（本场战斗中）
-                    adjacentItem.attackBonus = (adjacentItem.attackBonus || 0) + bonus;
-                    affectedCount++;
-                    console.log(`宝剑触发！为相邻近战物品(位置${slot})增加攻击力 +${bonus}！当前总加成: +${adjacentItem.attackBonus}`);
-                }
-            }
+        // 使用通用相邻查找函数，过滤近战单位
+        const adjacentMeleeItems = this.findAdjacentItems(
+            swordSlot, 
+            swordItem.template.size, // 宝剑是小尺寸物品
+            (item) => item.template.unitType === 'melee'
+        );
+        
+        for (const adjacent of adjacentMeleeItems) {
+            const { item: targetItem, position } = adjacent;
+            
+            // 为相邻近战物品永久增加攻击力（本场战斗中）
+            targetItem.attackBonus = (targetItem.attackBonus || 0) + bonus;
+            console.log(`宝剑触发！为${position}侧近战物品(${targetItem.id})增加攻击力 +${bonus}！当前总加成: +${targetItem.attackBonus}`);
         }
         
-        if (affectedCount > 0) {
-            console.log(`宝剑效果触发完成，影响了 ${affectedCount} 个相邻近战物品`);
+        if (adjacentMeleeItems.length > 0) {
+            console.log(`宝剑效果触发完成，影响了 ${adjacentMeleeItems.length} 个相邻近战物品`);
             // 更新显示以反映攻击力变化
             this.updateInventoryDisplay();
         } else {
@@ -4182,6 +4494,58 @@ class InventorySystem {
             }
         }
         return null;
+    }
+
+    // 通用的相邻物品查找函数
+    findAdjacentItems(sourceSlot, sourceSize = 1, filterFn = null) {
+        const adjacentItems = [];
+        
+        // 检查左侧相邻位置
+        const leftSlot = sourceSlot - 1;
+        if (leftSlot >= 0) {
+            const leftTarget = this.getItemAtSlot(leftSlot);
+            if (leftTarget && (!filterFn || filterFn(leftTarget))) {
+                adjacentItems.push({
+                    item: leftTarget,
+                    position: 'left',
+                    slot: leftSlot
+                });
+            }
+        }
+        
+        // 检查右侧相邻位置（考虑源物品的尺寸）
+        const rightSlot = sourceSlot + sourceSize;
+        if (rightSlot < this.inventory.length) {
+            const rightTarget = this.getItemAtSlot(rightSlot);
+            if (rightTarget && (!filterFn || filterFn(rightTarget))) {
+                adjacentItems.push({
+                    item: rightTarget,
+                    position: 'right',
+                    slot: rightSlot
+                });
+            }
+        }
+        
+        return adjacentItems;
+    }
+
+    // 获取指定位置的实际物品（处理occupied情况）
+    getItemAtSlot(slot) {
+        if (slot < 0 || slot >= this.inventory.length) {
+            return null;
+        }
+        
+        const slotContent = this.inventory[slot];
+        
+        if (slotContent === null) {
+            return null; // 空位置
+        } else if (slotContent === 'occupied') {
+            // 被占用的位置，查找实际物品
+            return this.findItemByOccupiedSlot(slot);
+        } else {
+            // 直接的物品
+            return slotContent;
+        }
     }
     
     // 检查右侧是否有徽章，并应用冷却减少
@@ -4267,11 +4631,6 @@ class InventorySystem {
         }
     }
     
-    // 添加测试单位到战斗区和背包
-    addTestUnits() {
-        // 游戏开始时战斗区和背包都为空
-        console.log('游戏开始：战斗区和背包为空');
-    }
     
     // 战旗特殊能力：全场近战单位加速2秒
     triggerWarBannerAcceleration() {
@@ -4293,6 +4652,80 @@ class InventorySystem {
         
         // 更新显示
         this.updateInventoryDisplay();
+    }
+    
+    // 药剂师特殊能力：召唤时加速相邻魔法物品1秒
+    triggerAlchemistAcceleration(alchemistSlot) {
+        const accelerationTime = 60; // 1秒 = 60帧
+        
+        console.log(`药剂师(位置${alchemistSlot})触发加速技能，开始检查相邻位置`);
+        
+        // 使用通用相邻查找函数，过滤魔法物品（包括召唤和非召唤的魔法物品）
+        const adjacentMageItems = this.findAdjacentItems(
+            alchemistSlot, 
+            1, // 药剂师是小尺寸物品
+            (item) => item.template.unitType === 'mage' // 移除unitCount限制，支持所有魔法物品
+        );
+        
+        let acceleratedCount = 0;
+        
+        for (const adjacent of adjacentMageItems) {
+            const { item: targetItem, position } = adjacent;
+            
+            // 累加加速时间
+            const oldAcceleration = targetItem.accelerationTime || 0;
+            targetItem.accelerationTime = oldAcceleration + accelerationTime;
+            acceleratedCount++;
+            
+            console.log(`✓ 药剂师为${position}侧魔法物品(${targetItem.template.name})提供1秒加速，加速时间: ${oldAcceleration} -> ${targetItem.accelerationTime}`);
+        }
+        
+        if (acceleratedCount > 0) {
+            console.log(`✓ 药剂师效果触发！${acceleratedCount}个相邻魔法物品获得1秒加速`);
+            Utils.playSound('buff');
+        } else {
+            console.log('✗ 药剂师召唤，但没有相邻的魔法物品');
+        }
+        
+        // 更新显示
+        this.updateInventoryDisplay();
+    }
+    
+    // 炼金工房特殊能力：产生金币
+    triggerAlchemyLabGoldGeneration(item) {
+        const goldAmount = item.alchemyGoldGeneration || 1;
+        this.game.playerGold += goldAmount;
+        
+        console.log(`炼金工房产生了${goldAmount}金币！当前金币：${this.game.playerGold}`);
+        Utils.playSound('coin');
+        
+        // 更新金币显示
+        this.game.updateUI();
+    }
+    
+    // 计算炼金工房提供的出售金币加成（无论在战斗区还是背包都生效）
+    getAlchemySellBonus() {
+        let totalBonus = 0;
+        
+        // 检查战斗区的炼金工房
+        for (let i = 0; i < this.inventory.length; i++) {
+            const item = this.inventory[i];
+            if (item && item !== 'occupied' && item.id === 'alchemyLab') {
+                totalBonus += item.alchemySellBonus || 2;
+                console.log(`战斗区炼金工房提供出售加成：+${item.alchemySellBonus || 2}`);
+            }
+        }
+        
+        // 检查背包的炼金工房
+        for (let i = 0; i < this.backpack.length; i++) {
+            const item = this.backpack[i];
+            if (item && item !== 'occupied' && item.id === 'alchemyLab') {
+                totalBonus += item.alchemySellBonus || 2;
+                console.log(`背包炼金工房提供出售加成：+${item.alchemySellBonus || 2}`);
+            }
+        }
+        
+        return totalBonus;
     }
     
     // 购买物品到背包（自动找位置版本）
@@ -4381,6 +4814,14 @@ class InventorySystem {
             if (newItem.id === 'giant') {
                 const qualityLevelsAboveMin = newItem.quality - template.minQuality;
                 newItem.giantHealthBonus = qualityLevelsAboveMin * 100; // 每提升一个品质+100生命值
+            }
+            
+            // 为炼金工房计算品质升级效果（相对于起始品质）
+            if (newItem.id === 'alchemyLab') {
+                const qualityLevelsAboveMin = newItem.quality - template.minQuality;
+                // 蓝1+2，紫2+3，橙3+4，红4+5
+                newItem.alchemyGoldGeneration = 1 + qualityLevelsAboveMin;
+                newItem.alchemySellBonus = 2 + qualityLevelsAboveMin;
             }
             
             this.addItemToBackpackAutoSlot(newItem);
