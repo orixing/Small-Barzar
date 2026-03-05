@@ -156,7 +156,7 @@ class InventorySystem {
             },
             staff: {
                 name: '法杖',
-                icon: '🔮',
+                icon: '🪄',
                 size: 1,
                 baseValue: 1,
                 unitType: 'mage',
@@ -283,7 +283,7 @@ class InventorySystem {
             },
             laboratory: {
                 name: '实验室',
-                icon: '🧪',
+                icon: '🔬',
                 size: 2,
                 baseValue: 2,
                 unitType: 'mage',
