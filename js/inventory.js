@@ -9,6 +9,8 @@ class InventorySystem {
         this.refreshCooldown = 0;
         this.backpackOpen = false;
         this.isFirstShopGeneration = true; // 标记是否为第一次生成商店
+        this.refreshesUsedThisWave = 0; // 本波已使用的刷新次数
+        this.maxRefreshesPerWave = 1; // 每波最大刷新次数
         
         // 品质系统定义
         this.qualitySystem = {
@@ -220,7 +222,7 @@ class InventorySystem {
                 baseValue: 1,
                 unitType: 'mage',
                 unitCount: 1,
-                cooldown: 360, // 6秒
+                cooldown: 420, // 7秒 (+1s)
                 minQuality: 1, // 绿色起始
                 description: '每有一个魔法物品，攻击力增加'
             },
@@ -242,7 +244,7 @@ class InventorySystem {
                 baseValue: 2,
                 unitType: 'mage',
                 unitCount: 1,
-                cooldown: 420, // 7秒
+                cooldown: 480, // 8秒 (+1s)
                 minQuality: 2, // 蓝色起始
                 description: '如果有相邻的魔法物品，攻击力大幅提升'
             },
@@ -264,7 +266,7 @@ class InventorySystem {
                 baseValue: 1,
                 unitType: 'mage',
                 unitCount: 1,
-                cooldown: 360, // 6秒
+                cooldown: 420, // 7秒 (+1s)
                 minQuality: 2, // 蓝色起始
                 description: '加速相邻魔法物品'
             },
@@ -275,7 +277,7 @@ class InventorySystem {
                 baseValue: 1,
                 unitType: 'mage',
                 unitCount: 1,
-                cooldown: 480, // 8秒
+                cooldown: 540, // 9秒 (+1s)
                 minQuality: 3, // 紫色起始
                 description: '同时攻击多个敌人'
             },
@@ -1258,7 +1260,23 @@ class InventorySystem {
                     bonusHealth = item.giantHealthBonus || 0;
                 } else if (item.id === 'swordmaster') {
                     bonusAttack += item.swordmasterBonus || 0;
+                } else if (item.id === 'apprentice') {
+                    bonusAttack += item.apprenticeBonus || 0;
+                } else if (item.id === 'assassin') {
+                    bonusAttack += item.meleeBonus || 0;
+                } else if (item.id === 'barbarian') {
+                    bonusAttack += (item.barbarianBonus || 0) + (item.barbarianAdjacentBonus || 0);
+                } else if (item.id === 'golem') {
+                    bonusAttack += item.golemAdjacentBonus || 0;
                 }
+                
+                // 法杖技能：所有魔法物品都受到法杖攻击力加成
+                if (template.unitType === 'mage') {
+                    bonusAttack += item.staffBonus || 0;
+                }
+                
+                // 实验室全局攻击力加成（对所有单位生效）
+                bonusAttack += item.laboratoryBonus || 0;
                 
                 // 获取魔法阵提供的额外攻击目标数
                 const extraTargets = item.magicCircleBonus || 0;
@@ -1289,17 +1307,29 @@ class InventorySystem {
     }
     
     refreshShop() {
-        if (this.game.playerGold >= this.refreshCost) {
-            this.game.playerGold -= this.refreshCost;
-            this.refreshCost += 1; // 每次刷新后费用增加1元
-            this.generateShopItems();
-            this.game.updateUI();
-            
-            // 刷新商店价格颜色
-            this.updateShopDisplay();
-            
-            Utils.playSound('refresh');
+        // 检查是否还有刷新次数
+        if (this.refreshesUsedThisWave >= this.maxRefreshesPerWave) {
+            console.log('本波刷新次数已用完');
+            return;
         }
+        
+        // 免费刷新，但限制次数
+        this.refreshesUsedThisWave++;
+        this.generateShopItems();
+        this.game.updateUI();
+        
+        // 刷新商店价格颜色
+        this.updateShopDisplay();
+        
+        // 立即更新按钮状态
+        const refreshBtn = document.getElementById('refresh-shop');
+        const remainingRefreshes = this.maxRefreshesPerWave - this.refreshesUsedThisWave;
+        if (remainingRefreshes <= 0) {
+            refreshBtn.style.display = 'none';
+        }
+        
+        Utils.playSound('refresh');
+        console.log(`刷新商店，本波已用${this.refreshesUsedThisWave}/${this.maxRefreshesPerWave}次`);
     }
     
     // 开始战斗时重置所有物品冷却
@@ -2350,8 +2380,14 @@ class InventorySystem {
         
         // 更新刷新按钮状态
         const refreshBtn = document.getElementById('refresh-shop');
-        refreshBtn.disabled = this.game.playerGold < this.refreshCost;
-        refreshBtn.textContent = `🔄 刷新 (💰${this.refreshCost})`;
+        const remainingRefreshes = this.maxRefreshesPerWave - this.refreshesUsedThisWave;
+        if (remainingRefreshes <= 0) {
+            refreshBtn.style.display = 'none';
+        } else {
+            refreshBtn.style.display = 'block';
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = `🔄 刷新 (${remainingRefreshes})`;
+        }
     }
     
     toggleBackpack() {
@@ -3435,7 +3471,7 @@ class InventorySystem {
                 const winBonusPerVictory = this.getStaffWinBonus(item.quality);
                 
                 skillDescElement.innerHTML = `全场<span class="mage-badge">魔法</span>单位攻击力 <span style="color: white; font-weight: bold;">+${baseBonus + winBonus}</span><br>` +
-                                           `<small style="color: #aaa;">获胜后攻击力加成 +${winBonusPerVictory}</small>`;
+                                           `携带法杖获胜后攻击力<span style="color: white; font-weight: bold;">+${winBonusPerVictory}</span>`;
             }
             
             const skillStatusElement = document.getElementById('skill-status');
@@ -4012,13 +4048,13 @@ class InventorySystem {
     getApprenticeQualityBonus(quality) {
         // 品质等级对应的每魔法物品攻击力加成
         const bonusMap = {
-            1: 3,   // 绿色：每魔法物品+3攻击力
-            2: 6,   // 蓝色：每魔法物品+6攻击力
-            3: 9,   // 紫色：每魔法物品+9攻击力
-            4: 12,  // 橙色：每魔法物品+12攻击力
-            5: 15   // 红色：每魔法物品+15攻击力
+            1: 2,   // 绿色：每魔法物品+2攻击力
+            2: 4,   // 蓝色：每魔法物品+4攻击力
+            3: 6,   // 紫色：每魔法物品+6攻击力
+            4: 8,   // 橙色：每魔法物品+8攻击力
+            5: 10   // 红色：每魔法物品+10攻击力
         };
-        return bonusMap[quality] || 3; // 默认加成为3
+        return bonusMap[quality] || 2; // 默认加成为2
     }
     
     // 应用野蛮人的相邻加成效果（参考徽章实现）
@@ -4275,11 +4311,11 @@ class InventorySystem {
     // 获取实验室品质对应的每个魔法物品加成值
     getLaboratoryQualityBonus(quality) {
         const bonusMap = {
-            3: 8,  // 紫色：每个魔法物品+8攻击力
-            4: 14, // 橙色：每个魔法物品+14攻击力
-            5: 20  // 红色：每个魔法物品+20攻击力
+            3: 4,  // 紫色：每个魔法物品+4攻击力
+            4: 6,  // 橙色：每个魔法物品+6攻击力
+            5: 8   // 红色：每个魔法物品+8攻击力
         };
-        return bonusMap[quality] || 8;
+        return bonusMap[quality] || 4;
     }
     
     // 统一的加速处理函数（用于魔力水晶被加速检测）
@@ -4516,13 +4552,13 @@ class InventorySystem {
     // 获取法杖品质对应的每次获胜加成
     getStaffWinBonus(quality) {
         const winBonusMap = {
-            1: 4,   // 绿色：每次获胜+4攻击力
-            2: 6,   // 蓝色：每次获胜+6攻击力
-            3: 8,   // 紫色：每次获胜+8攻击力
-            4: 10,  // 橙色：每次获胜+10攻击力
-            5: 12   // 红色：每次获胜+12攻击力
+            1: 1,   // 绿色：每次获胜+1攻击力
+            2: 2,   // 蓝色：每次获胜+2攻击力
+            3: 3,   // 紫色：每次获胜+3攻击力
+            4: 4,   // 橙色：每次获胜+4攻击力
+            5: 5    // 红色：每次获胜+5攻击力
         };
-        return winBonusMap[quality] || 4; // 默认为绿色加成
+        return winBonusMap[quality] || 1; // 默认为绿色加成
     }
 
     // 获取女巫品质对应的攻击目标数量
@@ -4575,6 +4611,8 @@ class InventorySystem {
             reductionPerLevel = 1.0; // 民兵团每升级-1秒
         } else if (item.id === 'titan') {
             reductionPerLevel = 4.0; // 泰坦每升级-4秒
+        } else if (item.id === 'waterElemental') {
+            reductionPerLevel = 1.0; // 水元素每升级-1秒
         } else {
             reductionPerLevel = 0.5; // 其他单位-0.5秒
         }
@@ -4812,12 +4850,12 @@ class InventorySystem {
     // 宝剑特殊技能：获取品质对应的攻击力加成
     getMagicSwordBonus(quality) {
         const bonusMap = {
-            2: 5,   // 蓝色 +5
-            3: 8,   // 紫色 +8
-            4: 11,  // 橙色 +11
-            5: 14   // 红色 +14
+            2: 10,  // 蓝色 +10
+            3: 15,  // 紫色 +15
+            4: 20,  // 橙色 +20
+            5: 25   // 红色 +25
         };
-        return bonusMap[quality] || 5;
+        return bonusMap[quality] || 10;
     }
     
     // 宝剑特殊技能：触发时为相邻的近战物品增加攻击力

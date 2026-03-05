@@ -560,8 +560,8 @@ class Game {
         this.playerGold += waveGold;
         console.log(`第${this.wave}波开始，获得${waveGold}金币`);
         
-        // 重置商店刷新费用为1元
-        this.inventorySystem.refreshCost = 1;
+        // 重置商店刷新次数
+        this.inventorySystem.refreshesUsedThisWave = 0;
         
         // 新波开始时免费刷新商店
         this.inventorySystem.generateShopItems();
