@@ -8,7 +8,8 @@
       "Bash(node -c /mnt/e/Project/Test/js/entities.js)",
       "Bash(node -c /mnt/e/Project/Test/js/game.js)",
       "Bash(python3 -m http.server 8000 --directory /mnt/e/Project/Test)",
-      "Bash(node -c /mnt/e/Project/Test/js/renderer.js)"
+      "Bash(node -c /mnt/e/Project/Test/js/renderer.js)",
+      "Read(///**)"
     ],
     "deny": [],
     "ask": []

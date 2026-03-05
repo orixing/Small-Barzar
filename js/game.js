@@ -47,6 +47,9 @@ class Game {
         // 初始化背包系统
         this.inventorySystem = new InventorySystem(this);
         
+        // 初始化敌人物品系统
+        this.enemyInventorySystem = new EnemyInventorySystem(this);
+        
         // 绑定事件
         this.bindEvents();
         
@@ -55,6 +58,9 @@ class Game {
         
         // 初始化UI状态
         this.updatePhaseUI();
+        
+        // 初始化第1波敌人配置
+        this.enemyInventorySystem.initializeWave(1);
         
         // 显示第一波信息
         this.showWave(1);
@@ -155,8 +161,8 @@ class Game {
             if (backpackBtn) backpackBtn.style.display = 'block';
             if (goldDisplay) goldDisplay.style.display = 'flex';
             
-            // 更新敌人介绍内容
-            this.updateEnemyIntro();
+            // 更新敌人介绍标题
+            this.updateEnemyIntroTitle();
             
             // 如果背包是打开的，保持显示；否则隐藏
             if (!this.inventorySystem.backpackOpen) {
@@ -209,30 +215,17 @@ class Game {
         }
     }
 
-    updateEnemyIntro() {
+    updateEnemyIntroTitle() {
         const title = document.getElementById('enemy-intro-title');
-        const enemyIcon = document.getElementById('enemy-main-icon');
-        const enemyTypeName = document.getElementById('enemy-type-name');
-        
-        title.textContent = `第 ${this.wave} 波敌军`;
-        
-        // 根据波数确定敌人类型
-        const enemyTypes = [
-            { icon: '⚔️', name: '近战兵团' },
-            { icon: '🏹', name: '弓箭军团' },
-            { icon: '🛡️', name: '重装部队' },
-            { icon: '🔮', name: '法师军团' },
-            { icon: '⚔️🏹', name: '混合军团' },
-            { icon: '🛡️⚔️', name: '精锐军团' },
-            { icon: '🔮⚔️', name: '魔战军团' },
-            { icon: '🏹🛡️', name: '守护军团' },
-            { icon: '⚔️🔮🏹', name: '联合军团' },
-            { icon: '👑', name: '王牌军团' }
-        ];
-        
-        const currentType = enemyTypes[Math.min(this.wave - 1, enemyTypes.length - 1)];
-        enemyIcon.textContent = currentType.icon;
-        enemyTypeName.textContent = currentType.name;
+        if (title) {
+            // 获取敌人当前配置的名称
+            const config = this.enemyInventorySystem.currentWaveConfig;
+            if (config) {
+                title.textContent = `第 ${this.wave} 波 - ${config.name}`;
+            } else {
+                title.textContent = `第 ${this.wave} 波敌军`;
+            }
+        }
     }
 
     spawnPlayerUnitByType(type) {
@@ -322,6 +315,38 @@ class Game {
         }
         
         console.log(`第${this.wave}波敌人: 尝试生产${spawnCount}个单位，当前敌人数量: ${aliveEnemyCount}`);
+    }
+
+    // 敌方特定类型单位生成（镜像玩家函数）
+    spawnEnemyUnitBySpecificType(itemId, unitType, bonusAttack = 0, bonusHealth = 0, itemQuality = null, extraTargets = 0) {
+        if (this.gameState !== 'playing' || this.gamePhase !== 'battle') return;
+        
+        // 性能优化：限制单位总数
+        const maxUnits = 30; // 敌方最多30个单位
+        if (this.enemyUnits.filter(unit => !unit.markedForRemoval).length >= maxUnits) {
+            console.log('敌方单位数量已达上限，跳过生成');
+            return;
+        }
+        
+        const unit = new Unit(unitType, 'enemy', 
+            this.canvas.width - 70 + Utils.randomInt(-20, 20), 
+            this.canvas.height / 2 + Utils.randomInt(-30, 30),
+            itemId, itemQuality, extraTargets
+        );
+        
+        // 应用攻击力和生命值加成
+        if (bonusAttack > 0) {
+            unit.attackPower += bonusAttack;
+        }
+        if (bonusHealth > 0) {
+            unit.health += bonusHealth;
+            unit.maxHealth += bonusHealth;
+        }
+        
+        this.enemyUnits.push(unit);
+        Utils.playSound('spawn');
+        
+        console.log(`敌方${itemId}(品质${itemQuality})生成${unitType}单位，攻击力+${bonusAttack}，血量+${bonusHealth}`);
     }
 
     getWaveSpawnCount() {
@@ -498,15 +523,16 @@ class Game {
     updateAI() {
         if (this.gameState !== 'playing' || this.gamePhase !== 'battle') return;
         
-        this.enemyAI.spawnTimer++;
-        
-        if (this.enemyAI.spawnTimer >= this.enemyAI.spawnInterval) {
-            this.enemyAI.spawnTimer = 0;
-            this.spawnEnemyUnit();
-            
-            // 根据波数设置生产间隔 - 渐进式加快
-            this.enemyAI.spawnInterval = this.getWaveSpawnInterval();
-        }
+        // 旧的敌人AI生成系统已禁用，现在使用敌人物品系统生成
+        // this.enemyAI.spawnTimer++;
+        // 
+        // if (this.enemyAI.spawnTimer >= this.enemyAI.spawnInterval) {
+        //     this.enemyAI.spawnTimer = 0;
+        //     this.spawnEnemyUnit();
+        //     
+        //     // 根据波数设置生产间隔 - 渐进式加快
+        //     this.enemyAI.spawnInterval = this.getWaveSpawnInterval();
+        // }
         
         // 敌方也获得金币
         this.enemyGold += 1;
@@ -651,6 +677,9 @@ class Game {
         // 新波开始时免费刷新商店
         this.inventorySystem.generateShopItems();
         
+        // 初始化敌人物品配置
+        this.enemyInventorySystem.initializeWave(this.wave);
+        
         // 切换到备战阶段
         this.gamePhase = 'preparation';
         this.updatePhaseUI();
@@ -712,6 +741,12 @@ class Game {
             
             // 更新背包系统
             this.inventorySystem.update();
+            
+            // 更新敌人物品系统
+            this.enemyInventorySystem.update();
+            
+            // 更新敌人物品进度条（每帧更新）
+            this.enemyInventorySystem.updateEnemyProgressBars();
             
             // 更新波数信息显示
             if (this.waveInfoTimer > 0) {

@@ -61,10 +61,19 @@
         <div id="enemy-intro" class="enemy-intro-section">
             <div class="enemy-intro-content">
                 <h3 id="enemy-intro-title">第 1 波敌军</h3>
-                <div class="enemy-type-display">
-                    <div class="enemy-icon" id="enemy-main-icon">⚔️</div>
-                    <div class="enemy-type-name" id="enemy-type-name">近战兵团</div>
+                
+                <!-- 敌人战斗区显示 -->
+                <div class="enemy-inventory-section">
+                    <div class="inventory-grid">
+                        <div class="inventory-slot" data-enemy-slot="0"></div>
+                        <div class="inventory-slot" data-enemy-slot="1"></div>
+                        <div class="inventory-slot" data-enemy-slot="2"></div>
+                        <div class="inventory-slot" data-enemy-slot="3"></div>
+                        <div class="inventory-slot" data-enemy-slot="4"></div>
+                        <div class="inventory-slot" data-enemy-slot="5"></div>
+                    </div>
                 </div>
+                
                 <button id="start-battle-btn" class="start-battle-btn">⚔️ 开始战斗</button>
             </div>
         </div>
@@ -200,6 +209,7 @@
     <script src="js/entities.js"></script>
     <script src="js/renderer.js"></script>
     <script src="js/inventory.js"></script>
+    <script src="js/enemyInventory.js"></script>
     <script src="js/game.js"></script>
     <script src="js/main.js"></script>
 </body>

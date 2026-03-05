@@ -905,6 +905,44 @@ html, body {
     }
 }
 
+/* 敌人战斗区样式 - 简洁无边框风格 */
+.enemy-inventory-section {
+    margin: 10px 0;
+}
+
+.enemy-inventory-section .inventory-grid {
+    background: transparent;
+    padding: 4px;
+    border-radius: 0;
+}
+
+.enemy-inventory-section .inventory-slot {
+    background: rgba(52, 73, 94, 0.3);
+    border: 1px solid rgba(149, 165, 166, 0.6);
+    border-radius: 4px;
+}
+
+.enemy-inventory-section .inventory-slot:hover:not(.occupied) {
+    background: rgba(52, 73, 94, 0.4);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* 敌人物品样式 - 复用玩家物品样式，添加敌军特有的攻击力显示 */
+.enemy-inventory-section .inventory-item {
+    /* 敌人物品使用相同的inventory-item类，通过父容器区分样式 */
+}
+
+/* 敌人物品攻击力显示现在使用与玩家相同的.attack-label类 */
+
+/* 敌人物品进度条 - 使用与玩家相同的样式 */
+.enemy-inventory-section .inventory-item-progress-fill {
+    background: linear-gradient(0deg, #f39c12, #e67e22);
+}
+
+.enemy-inventory-section .inventory-item-progress-fill.ready {
+    background: linear-gradient(0deg, #27ae60, #2ecc71);
+}
+
 /* 响应式设计 - 全面移动端优化 */
 @media (max-width: 768px) {
     /* 基础元素大小调整 */
@@ -978,6 +1016,25 @@ html, body {
         padding: 8px 15px;
         font-size: 13px;
         min-height: 40px;
+    }
+    
+    /* 敌人战斗区移动端优化 - 复用玩家样式 */
+    .enemy-inventory-section {
+        padding: 10px;
+        margin: 15px 0;
+    }
+    
+    .enemy-inventory-section .inventory-header h3 {
+        font-size: 16px;
+    }
+    
+    .enemy-inventory-section .inventory-slot {
+        height: 55px;
+    }
+    
+    .enemy-status {
+        font-size: 11px;
+        padding: 2px 6px;
     }
     
 }

@@ -447,7 +447,7 @@ class InventorySystem {
         
         
         // 背包物品点击事件（用于拖拽，不再直接使用）
-        document.querySelectorAll('.inventory-slot').forEach((slot, index) => {
+        document.querySelectorAll('.inventory-section .inventory-slot').forEach((slot, index) => {
             // 移除点击使用逻辑，物品将自动生产
         });
         
@@ -1418,7 +1418,7 @@ class InventorySystem {
     updateInventoryDisplay() {
         console.log('=== UPDATING INVENTORY DISPLAY ===');
         // 只选择战斗区的槽位（不包含data-backpack-slot属性的）
-        const slots = document.querySelectorAll('.inventory-slot:not([data-backpack-slot])');
+        const slots = document.querySelectorAll('.inventory-section .inventory-slot:not([data-backpack-slot])');
         console.log('Found inventory slots:', slots.length);
         console.log('Inventory state:', this.inventory);
         
@@ -1455,7 +1455,7 @@ class InventorySystem {
         
         // 为每个战斗区槽位设置拖拽事件  
         const updateSlotEvents = () => {
-            const slots = document.querySelectorAll('.inventory-slot:not([data-backpack-slot])');
+            const slots = document.querySelectorAll('.inventory-section .inventory-slot:not([data-backpack-slot])');
             
             slots.forEach((slot, index) => {
                 // 设置原生拖拽事件
@@ -1702,7 +1702,7 @@ class InventorySystem {
         }
         
         // 清理UI状态
-        const slots = document.querySelectorAll('.inventory-slot');
+        const slots = document.querySelectorAll('.inventory-section .inventory-slot');
         slots.forEach(slot => {
             slot.style.opacity = '';
         });
@@ -1848,7 +1848,7 @@ class InventorySystem {
                 
                 if (this.draggedShopItem) {
                     // 检查是否拖拽到了具体的格子上
-                    const droppedOnSlot = e.target.closest('.inventory-slot');
+                    const droppedOnSlot = e.target.closest('.inventory-section .inventory-slot');
                     if (!droppedOnSlot) {
                         // 没有拖拽到具体格子，检查是否能购买（升级或新放置）
                         const shopItem = this.draggedShopItem.item;
@@ -2059,7 +2059,7 @@ class InventorySystem {
     }
     
     resetDrag() {
-        const slots = document.querySelectorAll('.inventory-slot');
+        const slots = document.querySelectorAll('.inventory-section .inventory-slot');
         const shopSection = document.querySelector('.shop-section');
         const inventorySection = document.querySelector('.inventory-section');
         const shopSlots = document.querySelectorAll('.shop-slot');
@@ -2343,7 +2343,7 @@ class InventorySystem {
     }
     
     clearAllHighlights() {
-        const slots = document.querySelectorAll('.inventory-slot');
+        const slots = document.querySelectorAll('.inventory-section .inventory-slot');
         slots.forEach(slot => {
             slot.classList.remove('drag-over');
         });
@@ -2365,7 +2365,7 @@ class InventorySystem {
     updateProgressBars() {
         // 缓存DOM查询结果，避免重复查询
         if (!this.cachedProgressSlots) {
-            this.cachedProgressSlots = document.querySelectorAll('.inventory-slot:not([data-backpack-slot])');
+            this.cachedProgressSlots = document.querySelectorAll('.inventory-section .inventory-slot:not([data-backpack-slot])');
         }
         
         const slots = this.cachedProgressSlots;
