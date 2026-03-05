@@ -163,7 +163,7 @@ class InventorySystem {
                 unitCount: 0, // 不召唤单位
                 cooldown: -1, // 被动物品
                 minQuality: 1,
-                description: '全场魔法物品攻击力+10，获胜后加成增强'
+                description: '全场魔法物品攻击力+10，法杖出战获胜后加成增强'
             },
             shield: {
                 name: '盾牌',
@@ -3471,7 +3471,7 @@ class InventorySystem {
                 const winBonusPerVictory = this.getStaffWinBonus(item.quality);
                 
                 skillDescElement.innerHTML = `全场<span class="mage-badge">魔法</span>单位攻击力 <span style="color: white; font-weight: bold;">+${baseBonus + winBonus}</span><br>` +
-                                           `携带法杖获胜后攻击力<span style="color: white; font-weight: bold;">+${winBonusPerVictory}</span>`;
+                                           `法杖出战获胜后攻击力<span style="color: white; font-weight: bold;">+${winBonusPerVictory}</span>`;
             }
             
             const skillStatusElement = document.getElementById('skill-status');

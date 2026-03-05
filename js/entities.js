@@ -190,9 +190,9 @@ class Unit {
     getAttackRange() {
         const ranges = {
             melee: 30,
-            ranged: 100,
+            ranged: 80,
             tank: 35,
-            mage: 120
+            mage: 80
         };
         return ranges[this.type] || 50;
     }
