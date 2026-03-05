@@ -78,34 +78,43 @@ class Renderer {
     }
 
     drawParticles() {
-        // 更新和绘制粒子效果
-        for (let i = this.particles.length - 1; i >= 0; i--) {
-            const particle = this.particles[i];
+        // 优化的粒子更新和绘制
+        let validParticles = [];
+        
+        for (const particle of this.particles) {
             particle.update();
             
-            if (particle.life <= 0) {
-                this.particles.splice(i, 1);
-                continue;
+            if (particle.life > 0) {
+                validParticles.push(particle);
+                particle.render(this.ctx);
             }
-            
-            particle.render(this.ctx);
         }
         
-        // 更新和绘制范围攻击效果
-        for (let i = this.areaEffects.length - 1; i >= 0; i--) {
-            const effect = this.areaEffects[i];
+        // 批量替换数组，避免频繁splice
+        this.particles = validParticles;
+        
+        // 优化的范围攻击效果更新
+        let validEffects = [];
+        
+        for (const effect of this.areaEffects) {
             effect.update();
             
-            if (effect.life <= 0) {
-                this.areaEffects.splice(i, 1);
-                continue;
+            if (effect.life > 0) {
+                validEffects.push(effect);
+                effect.render(this.ctx);
             }
-            
-            effect.render(this.ctx);
         }
+        
+        // 批量替换数组，避免频繁splice
+        this.areaEffects = validEffects;
     }
 
     addParticle(x, y, type = 'explosion') {
+        // 限制粒子数量，防止性能问题
+        if (this.particles.length > 200) {
+            this.particles.shift(); // 移除最老的粒子
+        }
+        
         const particle = new Particle(x, y, type);
         this.particles.push(particle);
     }
@@ -125,6 +134,13 @@ class Renderer {
         // 创建范围攻击显示效果
         const effect = new AreaAttackEffect(x, y, radius);
         this.areaEffects.push(effect);
+    }
+    
+    // 清理所有效果，每波结束时调用
+    clearAllEffects() {
+        this.particles = [];
+        this.areaEffects = [];
+        console.log('渲染器效果已清理');
     }
 
     drawUI(gameState) {

@@ -107,6 +107,12 @@ class Game {
         this.playerUnits = [];
         this.enemyUnits = [];
         
+        // 清理渲染器资源
+        this.renderer.clearAllEffects();
+        
+        // 清理DOM缓存
+        this.inventorySystem.clearDOMCache();
+        
         // 法杖成长：战斗胜利时增强
         this.inventorySystem.onBattleVictory();
         
@@ -119,8 +125,13 @@ class Game {
         // 重置宝剑攻击力加成
         this.inventorySystem.resetAttackBonuses();
         
-        // 重置角斗士攻击力加成
-        this.inventorySystem.resetGladiatorBonuses();
+        // 角斗士攻击力加成改为永久保留，不再重置
+        // this.inventorySystem.resetGladiatorBonuses();
+        
+        // 强制垃圾回收提示
+        if (window.gc) {
+            window.gc();
+        }
         
         // 进入下一波
         this.nextWave();
@@ -238,6 +249,13 @@ class Game {
 
     spawnPlayerUnitBySpecificType(itemId, unitType, bonusAttack = 0, bonusHealth = 0, itemQuality = null, extraTargets = 0) {
         if (this.gameState === 'playing' && this.gamePhase === 'battle') {
+            // 性能优化：限制单位总数以防止严重卡顿
+            const maxUnits = 50; // 每方最多50个单位
+            if (this.playerUnits.filter(unit => !unit.markedForRemoval).length >= maxUnits) {
+                console.log('单位数量已达上限，跳过生成');
+                return;
+            }
+            
             const unit = new Unit(unitType, 'player', 
                 70 + Utils.randomInt(-20, 20), 
                 this.canvas.height / 2 + Utils.randomInt(-30, 30),
@@ -267,10 +285,22 @@ class Game {
     spawnEnemyUnit() {
         if (this.gameState !== 'playing' || this.gamePhase !== 'battle') return;
         
+        // 性能优化：限制敌方单位数量
+        const maxUnits = 30; // 敌方最多30个单位（比玩家少，保持平衡）
+        const aliveEnemyCount = this.enemyUnits.filter(unit => !unit.markedForRemoval).length;
+        if (aliveEnemyCount >= maxUnits) {
+            return; // 达到上限不生成新单位
+        }
+        
         // 根据波数确定本次刷怪数量
         const spawnCount = this.getWaveSpawnCount();
         
         for (let i = 0; i < spawnCount; i++) {
+            // 检查是否还能生成更多单位
+            if (aliveEnemyCount + i >= maxUnits) {
+                break;
+            }
+            
             // 根据波数选择兵种类型
             const unitType = this.getWaveUnitType();
             
@@ -291,7 +321,7 @@ class Game {
             }
         }
         
-        console.log(`第${this.wave}波敌人: 生产${spawnCount}个单位`);
+        console.log(`第${this.wave}波敌人: 尝试生产${spawnCount}个单位，当前敌人数量: ${aliveEnemyCount}`);
     }
 
     getWaveSpawnCount() {
@@ -383,15 +413,24 @@ class Game {
     }
 
     updateUnits() {
-        // 更新玩家单位
-        for (let i = this.playerUnits.length - 1; i >= 0; i--) {
+        // 优化：避免频繁的splice操作，使用标记删除
+        this.updatePlayerUnits();
+        this.updateEnemyUnits();
+        
+        // 批量清理死亡单位，减少splice操作
+        this.cleanupDeadUnits();
+    }
+    
+    updatePlayerUnits() {
+        for (let i = 0; i < this.playerUnits.length; i++) {
             const unit = this.playerUnits[i];
+            if (!unit || unit.markedForRemoval) continue;
             
             if (!unit.alive) {
-                // 单位死亡，给敌方金币奖励
+                // 单位死亡，标记删除而不是立即删除
                 this.enemyGold += Math.floor(unit.cost / 4);
                 this.renderer.addExplosion(unit.x, unit.y);
-                this.playerUnits.splice(i, 1);
+                unit.markedForRemoval = true;
                 continue;
             }
             
@@ -405,21 +444,23 @@ class Game {
                 const baseDamage = unit.calculateBaseDamage();
                 this.enemyBase.takeDamage(baseDamage);
                 this.renderer.addExplosion(unit.x, unit.y);
-                this.playerUnits.splice(i, 1);
+                unit.markedForRemoval = true;
                 continue;
             }
             
             unit.update(this.enemyUnits, this.canvas);
         }
-
-        // 更新敌方单位
-        for (let i = this.enemyUnits.length - 1; i >= 0; i--) {
+    }
+    
+    updateEnemyUnits() {
+        for (let i = 0; i < this.enemyUnits.length; i++) {
             const unit = this.enemyUnits[i];
+            if (!unit || unit.markedForRemoval) continue;
             
             if (!unit.alive) {
-                // 单位死亡
+                // 单位死亡，标记删除
                 this.renderer.addExplosion(unit.x, unit.y);
-                this.enemyUnits.splice(i, 1);
+                unit.markedForRemoval = true;
                 continue;
             }
             
@@ -434,12 +475,24 @@ class Game {
                 this.playerBase.takeDamage(baseDamage);
                 this.enemyGold += unit.cost;
                 this.renderer.addExplosion(unit.x, unit.y);
-                this.enemyUnits.splice(i, 1);
+                unit.markedForRemoval = true;
                 continue;
             }
             
             unit.update(this.playerUnits, this.canvas);
         }
+    }
+    
+    // 批量清理标记删除的单位
+    cleanupDeadUnits() {
+        // 每隔几帧才清理一次，减少性能消耗
+        if (!this.cleanupCounter) this.cleanupCounter = 0;
+        this.cleanupCounter++;
+        if (this.cleanupCounter % 5 !== 0) return; // 每5帧清理一次
+        
+        // 使用filter而不是splice，性能更好
+        this.playerUnits = this.playerUnits.filter(unit => !unit.markedForRemoval);
+        this.enemyUnits = this.enemyUnits.filter(unit => !unit.markedForRemoval);
     }
 
     updateAI() {
@@ -469,10 +522,10 @@ class Game {
             4: 2.0,   // 第4波: 2秒 (-1.5s)
             5: 3.0,   // 第5波: 3秒 (-1.5s)
             6: 2.5,   // 第6波: 2.5秒 (-1.5s)
-            7: 2.0,   // 第7波: 2秒 (-1.5s)
-            8: 3.0,   // 第8波: 3秒 (-1.5s)
-            9: 2.5,   // 第9波: 2.5秒 (-1.5s)
-            10: 2.0   // 第10波: 2秒 (-1.5s)
+            7: 3.5,   // 第7波: 3.5秒
+            8: 4.5,   // 第8波: 4.5秒
+            9: 4.0,   // 第9波: 4秒
+            10: 3.5   // 第10波: 3.5秒
         };
         
         const seconds = intervalSeconds[this.wave] || 2.5; // 默认2.5秒 (-1.5s)
@@ -508,11 +561,45 @@ class Game {
         effect.style.fontWeight = 'bold';
         effect.style.fontSize = '14px';
     }
+    
+    showDefeatMessage() {
+        // 显示临时的失败提示
+        const canvas = this.canvas;
+        const rect = canvas.getBoundingClientRect();
+        
+        const message = document.createElement('div');
+        message.textContent = `💀 第${this.wave}波失败！但游戏继续...`;
+        message.style.position = 'fixed';
+        message.style.left = rect.left + rect.width / 2 + 'px';
+        message.style.top = rect.top + rect.height / 2 + 'px';
+        message.style.transform = 'translate(-50%, -50%)';
+        message.style.fontSize = '24px';
+        message.style.fontWeight = 'bold';
+        message.style.color = '#F44336';
+        message.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        message.style.padding = '15px 25px';
+        message.style.borderRadius = '10px';
+        message.style.zIndex = '1000';
+        message.style.pointerEvents = 'none';
+        message.style.textAlign = 'center';
+        
+        document.body.appendChild(message);
+        
+        // 2.5秒后移除
+        setTimeout(() => {
+            if (message.parentNode) {
+                document.body.removeChild(message);
+            }
+        }, 2500);
+    }
 
     checkGameOver() {
-        if (!this.playerBase.alive) {
-            this.gameState = 'gameover';
-            this.showGameOverScreen('defeat');
+        if (!this.playerBase.alive && this.gamePhase === 'battle') {
+            // 玩家基地被摧毁，但不游戏结束，直接进入下一波
+            console.log('玩家基地被摧毁，进入下一波');
+            // 显示失败提示但继续游戏
+            this.showDefeatMessage();
+            this.endBattle();
         } else if (!this.enemyBase.alive && this.gamePhase === 'battle') {
             // 敌方基地被摧毁，结束战斗
             this.endBattle();
@@ -533,6 +620,7 @@ class Game {
         const newHealth = 50 + 50 * this.wave;
         this.playerBase.health = this.playerBase.maxHealth = newHealth;
         this.playerBase.wave = this.wave;
+        this.playerBase.alive = true;  // 确保玩家基地复活
         this.enemyBase.health = this.enemyBase.maxHealth = newHealth;
         this.enemyBase.wave = this.wave;
         this.enemyBase.alive = true;
@@ -542,7 +630,12 @@ class Game {
         
         // 增强敌方实力
         this.enemyGold += this.wave * 50;
-        this.enemyAI.spawnInterval = Math.max(90, 240 - this.wave * 15);
+        // 第7波及以后，每波出兵间隔额外+0.8秒(48帧)
+        let baseInterval = Math.max(90, 240 - this.wave * 15);
+        if (this.wave >= 7) {
+            baseInterval += 48; // +0.8秒
+        }
+        this.enemyAI.spawnInterval = baseInterval;
         
         // 显示新波次
         this.showWave(this.wave);

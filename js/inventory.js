@@ -1275,7 +1275,8 @@ class InventorySystem {
         }
         
         for (let i = 0; i < actualUnitCount; i++) {
-            // 稍微延迟每个单位的生产
+            // 稍微延迟每个单位的生产，使用更短的延迟
+            const delay = i * 50; // 50ms延迟而不是默认延迟
             setTimeout(() => {
                 // 计算各种单位的属性加成
                 let bonusAttack = 0;
@@ -1286,6 +1287,8 @@ class InventorySystem {
                 
                 if (item.id === 'gladiator') {
                     bonusAttack += item.gladiatorBonus || 0;
+                    // 狂战士品质基础攻击力加成
+                    bonusAttack += this.getGladiatorQualityAttackBonus(item.quality);
                 } else if (item.id === 'giant') {
                     bonusHealth = item.giantHealthBonus || 0;
                 } else if (item.id === 'swordmaster') {
@@ -1312,7 +1315,7 @@ class InventorySystem {
                 const extraTargets = item.magicCircleBonus || 0;
                 
                 this.game.spawnPlayerUnitBySpecificType(item.id, template.unitType, bonusAttack, bonusHealth, item.quality, extraTargets);
-            }, i * 200); // 0.2秒间隔
+            }, delay); // 使用优化的延迟
         }
         
         // 民兵团特殊技能：生产后增加下次额外单位数
@@ -2346,9 +2349,26 @@ class InventorySystem {
         });
     }
     
+    // 清理DOM缓存和事件监听器，每波结束时调用
+    clearDOMCache() {
+        this.cachedProgressSlots = null;
+        
+        // 清理弹窗事件监听器
+        if (this.popupClickHandler) {
+            document.removeEventListener('click', this.popupClickHandler);
+            this.popupClickHandler = null;
+        }
+        
+        console.log('DOM缓存和事件监听器已清理');
+    }
+    
     updateProgressBars() {
-        // 只选择战斗区的槽位，排除背包槽位
-        const slots = document.querySelectorAll('.inventory-slot:not([data-backpack-slot])');
+        // 缓存DOM查询结果，避免重复查询
+        if (!this.cachedProgressSlots) {
+            this.cachedProgressSlots = document.querySelectorAll('.inventory-slot:not([data-backpack-slot])');
+        }
+        
+        const slots = this.cachedProgressSlots;
         
         slots.forEach((slot, index) => {
             const item = this.inventory[index];
@@ -2356,14 +2376,19 @@ class InventorySystem {
                 const progressFill = slot.querySelector('.inventory-item-progress-fill');
                 
                 if (progressFill) {
-                    // 更新进度条（使用实际冷却时间）
+                    // 计算进度
                     const actualCooldown = this.getActualCooldown(item);
                     const progressPercent = item.isReady ? 100 : 
                         ((actualCooldown - item.cooldownRemaining) / actualCooldown) * 100;
-                    progressFill.style.width = progressPercent + '%';
+                    const isReady = item.isReady;
+                    const stateKey = `${Math.floor(progressPercent)}_${isReady}`;
                     
-                    // 更新进度条颜色
-                    progressFill.className = `inventory-item-progress-fill ${item.isReady ? 'ready' : ''}`;
+                    // 只在进度有明显变化时更新DOM
+                    if (progressFill.dataset.lastState !== stateKey) {
+                        progressFill.style.width = progressPercent + '%';
+                        progressFill.className = `inventory-item-progress-fill ${isReady ? 'ready' : ''}`;
+                        progressFill.dataset.lastState = stateKey;
+                    }
                 }
             }
         });
@@ -2396,8 +2421,12 @@ class InventorySystem {
             }
         }
         
-        // 每帧都更新进度条以保证实时性
-        this.updateProgressBars();
+        // 优化：减少进度条更新频率，每3帧更新一次
+        if (!this.progressBarUpdateCounter) this.progressBarUpdateCounter = 0;
+        this.progressBarUpdateCounter++;
+        if (this.progressBarUpdateCounter % 3 === 0) {
+            this.updateProgressBars();
+        }
         
         // 更新显示
         if (needsUpdate) {
@@ -3384,7 +3413,9 @@ class InventorySystem {
             const skillDescElement = document.getElementById('skill-description');
             if (skillDescElement) {
                 const killBonus = this.getGladiatorKillBonus(item.quality);
-                skillDescElement.innerHTML = `战斗中我方近战单位消灭敌人后，物品攻击力 <span style="color: white; font-weight: bold;">+${killBonus}</span>`;
+                const qualityBonus = this.getGladiatorQualityAttackBonus(item.quality);
+                const qualityText = qualityBonus > 0 ? ` | 品质加成 <span style="color: #FFD700; font-weight: bold;">+${qualityBonus}</span>` : '';
+                skillDescElement.innerHTML = `战斗中我方近战单位消灭敌人后，物品攻击力 <span style="color: white; font-weight: bold;">+${killBonus}</span>${qualityText}`;
             }
             
             const skillStatusElement = document.getElementById('skill-status');
@@ -3801,9 +3832,13 @@ class InventorySystem {
                     stats.attack += item.barbarianBonus;
                 }
                 
-                // 角斗士技能：添加战斗攻击力加成
-                if (unitKey === 'gladiator' && item && item.gladiatorBonus) {
-                    stats.attack += item.gladiatorBonus;
+                // 角斗士技能：添加战斗攻击力加成和品质攻击力加成
+                if (unitKey === 'gladiator' && item) {
+                    if (item.gladiatorBonus) {
+                        stats.attack += item.gladiatorBonus;
+                    }
+                    // 添加品质基础攻击力加成
+                    stats.attack += this.getGladiatorQualityAttackBonus(item.quality);
                 }
                 
                 // 学徒技能：添加魔法物品数量攻击力加成
@@ -4341,11 +4376,11 @@ class InventorySystem {
     // 获取实验室品质对应的每个魔法物品加成值
     getLaboratoryQualityBonus(quality) {
         const bonusMap = {
-            3: 3,  // 紫色：每个魔法物品+3攻击力
-            4: 5,  // 橙色：每个魔法物品+5攻击力
-            5: 7   // 红色：每个魔法物品+7攻击力
+            3: 6,  // 紫色：每个魔法物品+6攻击力
+            4: 9,  // 橙色：每个魔法物品+9攻击力
+            5: 12  // 红色：每个魔法物品+12攻击力
         };
-        return bonusMap[quality] || 3;
+        return bonusMap[quality] || 6;
     }
     
     // 统一的加速处理函数（用于魔力水晶被加速检测）
@@ -4659,14 +4694,21 @@ class InventorySystem {
     
     // 根据角斗士品质获取每次击杀的攻击力加成
     getGladiatorKillBonus(quality) {
+        // 所有品质的击杀加成都固定为+1
+        return 1;
+    }
+    
+    // 根据角斗士品质获取基础攻击力加成
+    getGladiatorQualityAttackBonus(quality) {
+        // 品质升级基础攻击力加成：紫色起始40，每级+20
         const bonusMap = {
-            green: 3,
-            blue: 3,
-            purple: 3,
-            orange: 5,
-            red: 7
+            1: 0,   // 绿色 (不应该出现，狂战士紫色起始)
+            2: 0,   // 蓝色 (不应该出现，狂战士紫色起始)
+            3: 0,   // 紫色 (起始品质，无额外加成)
+            4: 20,  // 橙色：+20攻击力
+            5: 40   // 红色：+40攻击力
         };
-        return bonusMap[quality] || 3;
+        return bonusMap[quality] || 0;
     }
 
     // 为所有角斗士物品增加攻击力（消灭敌人时触发）
@@ -4707,14 +4749,16 @@ class InventorySystem {
     
     // 更新在场角斗士单位的攻击力
     updateGladiatorUnitsAttack() {
-        // 获取当前所有角斗士物品的最大战斗攻击力加成
+        // 获取当前所有角斗士物品的最大战斗攻击力加成和品质加成
         let maxGladiatorBonus = 0;
+        let maxQualityBonus = 0;
         
         // 检查战斗区角斗士
         for (let i = 0; i < this.inventory.length; i++) {
             const item = this.inventory[i];
             if (item && item !== 'occupied' && item.id === 'gladiator') {
                 maxGladiatorBonus = Math.max(maxGladiatorBonus, item.gladiatorBonus || 0);
+                maxQualityBonus = Math.max(maxQualityBonus, this.getGladiatorQualityAttackBonus(item.quality));
             }
         }
         
@@ -4723,15 +4767,16 @@ class InventorySystem {
             const item = this.backpack[i];
             if (item && item !== 'occupied' && item.id === 'gladiator') {
                 maxGladiatorBonus = Math.max(maxGladiatorBonus, item.gladiatorBonus || 0);
+                maxQualityBonus = Math.max(maxQualityBonus, this.getGladiatorQualityAttackBonus(item.quality));
             }
         }
         
         // 更新所有在场的角斗士单位攻击力
         for (const unit of this.game.playerUnits) {
             if (unit.itemId === 'gladiator') {
-                // 重新计算攻击力：基础 + 战斗加成
+                // 重新计算攻击力：基础 + 品质加成 + 战斗加成
                 const baseAttack = this.getUnitStats('gladiator').attack;
-                unit.attackPower = baseAttack + maxGladiatorBonus;
+                unit.attackPower = baseAttack + maxQualityBonus + maxGladiatorBonus;
             }
         }
     }
@@ -4880,10 +4925,10 @@ class InventorySystem {
     // 宝剑特殊技能：获取品质对应的攻击力加成
     getMagicSwordBonus(quality) {
         const bonusMap = {
-            2: 10,  // 蓝色 +10
-            3: 15,  // 紫色 +15
-            4: 20,  // 橙色 +20
-            5: 25   // 红色 +25
+            2: 6,   // 蓝色 +6
+            3: 9,   // 紫色 +9
+            4: 12,  // 橙色 +12
+            5: 15   // 红色 +15
         };
         return bonusMap[quality] || 5;
     }

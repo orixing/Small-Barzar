@@ -168,7 +168,7 @@ class Unit {
                 golemArcane: 90,     // 奥数魔像 JSON: 90
                 archmage: 50,        // 大法师 JSON: 50
                 alchemist: 20,       // 药剂师 JSON: 20
-                witch: 10,           // 女巫 JSON: 10
+                witch: 20,           // 女巫 JSON: 20 (从10增加到20)
                 dragonMagic: 70      // 魔法巨龙 JSON: 70
             };
             
@@ -192,7 +192,7 @@ class Unit {
             melee: 30,
             ranged: 80,
             tank: 35,
-            mage: 50
+            mage: 60  // 魔法单位攻击距离从50增加到60
         };
         return ranges[this.type] || 50;
     }
@@ -357,18 +357,30 @@ class Unit {
     }
 
     findTarget(enemyUnits) {
+        // 优化：减少目标搜索频率
         if (this.target && this.target.alive) {
-            return; // 已有活着的目标
+            // 如果当前目标还活着，每隔几帧才重新搜索更近的目标
+            if (!this.targetSearchCounter) this.targetSearchCounter = 0;
+            this.targetSearchCounter++;
+            if (this.targetSearchCounter % 10 !== 0) {
+                return; // 每10帧才重新搜索一次
+            }
         }
 
         let closestEnemy = null;
         let closestDistance = Infinity;
+        const maxSearchDistance = this.attackRange * 2; // 只搜索攻击范围2倍内的敌人
 
         for (const enemy of enemyUnits) {
             if (!enemy.alive) continue;
             
+            // 快速距离检查：先用曼哈顿距离粗筛
+            const dx = Math.abs(this.x - enemy.x);
+            const dy = Math.abs(this.y - enemy.y);
+            if (dx + dy > maxSearchDistance * 1.4) continue; // 曼哈顿距离近似筛选
+            
             const distance = Utils.distance(this.x, this.y, enemy.x, enemy.y);
-            if (distance < closestDistance) {
+            if (distance < closestDistance && distance <= maxSearchDistance) {
                 closestDistance = distance;
                 closestEnemy = enemy;
             }
@@ -413,30 +425,37 @@ class Unit {
         }
     }
 
-    // 计算来自友军的排斥力
+    // 计算来自友军的排斥力 - 优化版本
     calculateRepulsionForce() {
+        // 只有在密集区域才计算排斥力，减少计算量
+        if (!this.shouldCalculateRepulsion()) {
+            return { x: 0, y: 0 };
+        }
+        
         let repulsionX = 0;
         let repulsionY = 0;
         
         // 从全局游戏对象获取友军列表
         const friendlyUnits = this.getFriendlyUnits();
+        const coreDistance = 30; // 推挤范围从25增加到30
         
+        // 只检查附近的单位，减少不必要的距离计算
         for (const unit of friendlyUnits) {
             if (unit === this || !unit.alive) continue;
             
-            const distance = Utils.distance(this.x, this.y, unit.x, unit.y);
-            const minDistance = 25; // 最小安全距离
+            // 快速距离检查：先用曼哈顿距离粗筛
+            const dx = this.x - unit.x;
+            const dy = this.y - unit.y;
+            if (Math.abs(dx) > coreDistance || Math.abs(dy) > coreDistance) continue;
             
-            if (distance < minDistance && distance > 0) {
-                // 只对不同兵种施加排斥力
-                if (this.type !== unit.type) {
-                    // 计算排斥方向（从其他单位指向当前单位）
-                    const dx = this.x - unit.x;
-                    const dy = this.y - unit.y;
-                    
-                    // 排斥力强度与距离成反比，距离越近排斥力越强
-                    const repulsionStrength = (minDistance - distance) / minDistance;
-                    const maxRepulsionForce = 0.5; // 限制最大排斥力，避免过度分散
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < coreDistance && distance > 0) {
+                // 只对不同具体单位施加排斥力
+                if (this.itemId !== unit.itemId) {
+                    // 排斥力强度与距离成反比
+                    const repulsionStrength = (coreDistance - distance) / coreDistance;
+                    const maxRepulsionForce = 1.8; // 推挤力从1.2增加到1.8
                     
                     const normalizedDx = dx / distance;
                     const normalizedDy = dy / distance;
@@ -448,6 +467,14 @@ class Unit {
         }
         
         return { x: repulsionX, y: repulsionY };
+    }
+    
+    // 判断是否需要计算排斥力
+    shouldCalculateRepulsion() {
+        // 每隔几帧才计算一次，减少计算频率
+        if (!this.repulsionUpdateCounter) this.repulsionUpdateCounter = 0;
+        this.repulsionUpdateCounter++;
+        return this.repulsionUpdateCounter % 3 === 0; // 每3帧计算一次
     }
 
     // 应用排斥力
@@ -736,6 +763,18 @@ class Unit {
     }
 
     renderHealthBar(ctx) {
+        const healthPercent = this.health / this.maxHealth;
+        
+        // 满血单位不显示血条
+        if (healthPercent >= 1.0 && this.maxShield === 0) {
+            return;
+        }
+        
+        // 满血满盾单位不显示血条
+        if (healthPercent >= 1.0 && this.maxShield > 0 && this.shield >= this.maxShield) {
+            return;
+        }
+
         const barWidth = this.size * 1.2;
         const barHeight = 4;
         const barX = this.x - barWidth / 2;
@@ -762,20 +801,21 @@ class Unit {
             currentY += barHeight + 2;
         }
 
-        // 血条背景
-        ctx.fillStyle = '#333';
-        ctx.fillRect(barX, currentY, barWidth, barHeight);
+        // 只有非满血时才绘制血条
+        if (healthPercent < 1.0) {
+            // 血条背景
+            ctx.fillStyle = '#333';
+            ctx.fillRect(barX, currentY, barWidth, barHeight);
 
-        // 血条
-        const healthPercent = this.health / this.maxHealth;
-        ctx.fillStyle = healthPercent > 0.6 ? '#4CAF50' : 
-                       healthPercent > 0.3 ? '#FFA500' : '#F44336';
-        ctx.fillRect(barX, currentY, barWidth * healthPercent, barHeight);
+            // 血条颜色：我方单位永远绿色，敌方单位永远红色
+            ctx.fillStyle = this.team === 'player' ? '#4CAF50' : '#F44336';
+            ctx.fillRect(barX, currentY, barWidth * healthPercent, barHeight);
 
-        // 血条边框
-        ctx.strokeStyle = '#666';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(barX, currentY, barWidth, barHeight);
+            // 血条边框
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, currentY, barWidth, barHeight);
+        }
 
         // 更新特效计时器
         if (this.shieldHitEffect > 0) {
