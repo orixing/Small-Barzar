@@ -236,13 +236,14 @@ class Game {
         }
     }
 
-    spawnPlayerUnitBySpecificType(itemId, unitType, bonusAttack = 0, bonusHealth = 0, itemQuality = null) {
+    spawnPlayerUnitBySpecificType(itemId, unitType, bonusAttack = 0, bonusHealth = 0, itemQuality = null, extraTargets = 0) {
         if (this.gameState === 'playing' && this.gamePhase === 'battle') {
             const unit = new Unit(unitType, 'player', 
                 70 + Utils.randomInt(-20, 20), 
                 this.canvas.height / 2 + Utils.randomInt(-30, 30),
                 itemId,  // 传递具体的物品ID
-                itemQuality  // 传递物品品质
+                itemQuality,  // 传递物品品质
+                extraTargets  // 传递额外攻击目标数
             );
             
             // 应用额外的攻击力加成（主要用于角斗士）
@@ -310,7 +311,7 @@ class Game {
         } else if (this.wave >= 5) {
             return 2; // 第5-7波每次刷2个
         } else if (this.wave === 1) {
-            return 3; // 第1波每次刷3个（测试女巫多目标攻击）
+            return 1; // 第1波每次刷1个
         } else {
             return 1; // 第2-4波每次刷1个
         }
@@ -470,19 +471,19 @@ class Game {
         // 每波的生产间隔（帧数，60帧=1秒）
         // 指定每波的刷新间隔
         const intervalSeconds = {
-            1: 5.0,   // 第1波: 5秒
-            2: 4.5,   // 第2波: 4.5秒
-            3: 4.0,   // 第3波: 4秒
-            4: 3.5,   // 第4波: 3.5秒
-            5: 4.5,   // 第5波: 4.5秒
-            6: 4.0,   // 第6波: 4秒
-            7: 3.5,   // 第7波: 3.5秒
-            8: 4.5,   // 第8波: 4.5秒
-            9: 4.0,   // 第9波: 4秒
-            10: 3.5   // 第10波: 3.5秒
+            1: 4.0,   // 第1波: 4秒 (-1.0s)
+            2: 3.5,   // 第2波: 3.5秒 (-1.0s)
+            3: 3.0,   // 第3波: 3秒 (-1.0s)
+            4: 2.5,   // 第4波: 2.5秒 (-1.0s)
+            5: 3.5,   // 第5波: 3.5秒 (-1.0s)
+            6: 3.0,   // 第6波: 3秒 (-1.0s)
+            7: 2.5,   // 第7波: 2.5秒 (-1.0s)
+            8: 3.5,   // 第8波: 3.5秒 (-1.0s)
+            9: 3.0,   // 第9波: 3秒 (-1.0s)
+            10: 2.5   // 第10波: 2.5秒 (-1.0s)
         };
         
-        const seconds = intervalSeconds[this.wave] || 4.0; // 默认4秒
+        const seconds = intervalSeconds[this.wave] || 3.0; // 默认3秒 (-1.0s)
         const intervalFrames = Math.round(seconds * 60);
         
         console.log(`第${this.wave}波刷怪间隔: ${seconds}秒 (${intervalFrames}帧)`);

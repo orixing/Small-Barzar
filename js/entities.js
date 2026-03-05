@@ -2,7 +2,7 @@
 
 // 基础单位类
 class Unit {
-    constructor(type, team, x, y, itemId = null, itemQuality = null) {
+    constructor(type, team, x, y, itemId = null, itemQuality = null, extraTargets = 0) {
         this.type = type;
         this.itemId = itemId; // 具体的物品ID，如'warrior', 'assassin'等
         this.itemQuality = itemQuality; // 物品品质，用于女巫等技能
@@ -25,22 +25,70 @@ class Unit {
         this.alive = true;
         this.moving = false;
         this.direction = team === 'player' ? 1 : -1; // 1向右，-1向左
+        this.extraTargets = extraTargets; // 额外攻击目标数量（来自魔法阵等效果）
+        this.areaAttackRadius = this.getAreaAttackRadius(); // 范围攻击半径
     }
 
     getMaxHealth() {
+        // 如果有具体的物品ID，使用具体的血量值
+        if (this.itemId) {
+            const specificHealth = {
+                // 近战单位
+                warrior: 120,
+                assassin: 80,
+                gladiator: 120,
+                barbarian: 120,
+                giant: 200,
+                cavalry: 160,
+                militia: 120,
+                swordmaster: 120,
+                titan: 300,
+                
+                // 其他兵种
+                bow: 80,
+                staff: 60,  // 不召唤单位，血量不重要
+                shield: 200,
+                
+                // 魔法单位 - 根据JSON配置
+                apprentice: 100,        // 学徒
+                waterElemental: 200,    // 水元素
+                golem: 200,             // 魔偶
+                golemArcane: 400,       // 奥数魔像
+                archmage: 100,          // 大法师
+                alchemist: 100,         // 药剂师
+                witch: 100,             // 女巫
+                dragonMagic: 400        // 魔法巨龙
+            };
+            
+            if (specificHealth[this.itemId]) {
+                return specificHealth[this.itemId];
+            }
+        }
+        
+        // 备用方案：使用通用类型血量
         const stats = {
             melee: 120,
             ranged: 80,
-            tank: 200,
-            mage: 60
+            tank: 200
+            // 删除了基础魔法单位(mage)的通用配置，所有魔法单位现在都使用JSON中的具体配置
         };
         return stats[this.type] || 100;
     }
 
     getMaxShield() {
-        // 只有泰坦拥有护盾
+        // 泰坦拥有固定护盾
         if (this.itemId === 'titan') {
             return 800;
+        }
+        // 奥数魔像拥有条件护盾（需要相邻魔法单位）
+        if (this.itemId === 'golemArcane') {
+            // 护盾数量根据品质等级决定
+            const shieldByQuality = {
+                3: 400,  // 紫色
+                4: 800,  // 橙色
+                5: 1200  // 红色
+            };
+            return shieldByQuality[this.itemQuality] || 400;
         }
         return 0;
     }
@@ -68,6 +116,8 @@ class Unit {
                 // 魔法单位
                 apprentice: 8,  // 学徒
                 waterElemental: 10,  // 水元素
+                golemArcane: 6, // 奥数魔像
+                archmage: 8,    // 大法师
                 alchemist: 8,   // 药剂师
                 witch: 8       // 女巫
             };
@@ -111,11 +161,15 @@ class Unit {
                 staff: 35,       // 法师
                 shield: 20,      // 盾牌
                 
-                // 魔法单位
-                apprentice: 20,  // 学徒
-                waterElemental: 40,  // 水元素
-                alchemist: 30,   // 药剂师
-                witch: 20       // 女巫
+                // 魔法单位 - 根据JSON配置
+                apprentice: 20,      // 学徒 JSON: 20
+                waterElemental: 40,  // 水元素 JSON: 40
+                golem: 40,           // 魔偶 JSON: 40
+                golemArcane: 100,    // 奥数魔像 JSON: 100
+                archmage: 60,        // 大法师 JSON: 60
+                alchemist: 30,       // 药剂师 JSON: 30
+                witch: 20,           // 女巫 JSON: 20
+                dragonMagic: 80      // 魔法巨龙 JSON: 80
             };
             
             if (specificAttackPower[this.itemId]) {
@@ -141,6 +195,21 @@ class Unit {
             mage: 120
         };
         return ranges[this.type] || 50;
+    }
+
+    getAreaAttackRadius() {
+        // 只有魔法巨龙才有范围攻击
+        if (this.itemId === 'dragonMagic') {
+            const quality = this.itemQuality || 4; // 默认橙色品质
+            const unitWidth = 20; // 单位宽度
+            // 橙色：1.2倍单位宽度，红色：1.8倍单位宽度
+            const radiusMap = {
+                4: Math.round(unitWidth * 1.2),  // 橙色：24像素
+                5: Math.round(unitWidth * 1.8)   // 红色：36像素
+            };
+            return radiusMap[quality] || Math.round(unitWidth * 1.2);
+        }
+        return 0; // 其他单位没有范围攻击
     }
 
     getCost() {
@@ -173,9 +242,15 @@ class Unit {
                 staff: 20,
                 shield: 20,
                 
-                // 魔法单位
-                apprentice: 20,     // 小型
-                waterElemental: 40  // 中型
+                // 魔法单位 - 根据JSON配置
+                apprentice: 20,     // 学徒 JSON: 20
+                waterElemental: 40, // 水元素 JSON: 40
+                golem: 40,          // 魔偶 JSON: 40
+                golemArcane: 60,    // 奥数魔像 JSON: 60
+                archmage: 20,       // 大法师 JSON: 20
+                alchemist: 20,      // 药剂师 JSON: 20
+                witch: 20,          // 女巫 JSON: 20
+                dragonMagic: 60     // 魔法巨龙 JSON: 60
             };
             
             if (specificBaseDamage[this.itemId]) {
@@ -217,8 +292,11 @@ class Unit {
                 apprentice: '🧝‍♂️',
                 waterElemental: '🌊',
                 golem: '🤖',
+                golemArcane: '🧞‍♂️',
+                archmage: '🧙‍♂️',
                 alchemist: '⚗️',
-                witch: '🧙🏿‍♀️'
+                witch: '🧙🏿‍♀️',
+                dragonMagic: '🐉'
             };
             
             if (specificIcons[this.itemId]) {
@@ -313,8 +391,11 @@ class Unit {
 
         this.attackCooldown = this.maxAttackCooldown;
         
-        // 女巫特殊攻击：多目标攻击
-        if (this.itemId === 'witch') {
+        // 获取总攻击目标数量
+        const totalTargets = this.getTotalTargetCount();
+        
+        // 如果攻击目标数大于1，使用多目标攻击
+        if (totalTargets > 1) {
             this.multiTargetAttack();
         } else {
             // 普通单目标攻击
@@ -333,14 +414,66 @@ class Unit {
     }
 
     areaAttack() {
-        // 法师的范围攻击（简化版）
-        // 在实际游戏中可以添加更复杂的范围效果
+        // 魔法巨龙的范围攻击
+        if (this.itemId === 'dragonMagic' && this.areaAttackRadius > 0) {
+            this.dragonAreaAttack();
+        }
+        // 其他法师的范围攻击（目前为空）
     }
 
-    // 女巫的多目标攻击
+    // 魔法巨龙的范围攻击实现
+    dragonAreaAttack() {
+        if (!this.target || !this.target.alive) return;
+        
+        // 显示攻击范围效果
+        if (window.game && window.game.renderer) {
+            window.game.renderer.addAreaAttackEffect(this.target.x, this.target.y, this.areaAttackRadius);
+        }
+        
+        // 获取可攻击的敌人单位列表
+        const enemyUnits = this.getEnemyUnits();
+        
+        // 找到主目标周围范围内的所有敌人
+        const enemiesInRange = enemyUnits.filter(enemy => {
+            if (!enemy.alive) return false;
+            const distance = Utils.distance(this.target.x, this.target.y, enemy.x, enemy.y);
+            return distance <= this.areaAttackRadius;
+        });
+        
+        console.log(`魔法巨龙范围攻击：范围内${enemiesInRange.length}个敌人`);
+        
+        // 对每个敌人计算距离递减伤害
+        enemiesInRange.forEach((enemy, index) => {
+            const distance = Utils.distance(this.target.x, this.target.y, enemy.x, enemy.y);
+            
+            // 计算伤害比例：100%到20%线性递减
+            let damageRatio;
+            if (distance === 0) {
+                damageRatio = 1.0; // 主目标100%伤害
+            } else {
+                // 距离越远伤害越低，最边缘20%伤害
+                damageRatio = 1.0 - (distance / this.areaAttackRadius) * 0.8;
+                damageRatio = Math.max(0.2, damageRatio); // 确保最低20%伤害
+            }
+            
+            const baseDamage = this.attackPower + Utils.randomInt(-5, 5);
+            const finalDamage = Math.floor(baseDamage * damageRatio);
+            
+            enemy.takeDamage(finalDamage, this);
+            
+            const percentage = Math.round(damageRatio * 100);
+            console.log(`魔法巨龙范围攻击目标${index + 1}：距离${distance.toFixed(1)}，${percentage}%伤害(${finalDamage})`);
+        });
+        
+        if (enemiesInRange.length === 0) {
+            console.log('魔法巨龙范围攻击：主目标周围无其他敌人');
+        }
+    }
+
+    // 多目标攻击（通用方法）
     multiTargetAttack() {
-        // 获取女巫的目标数量（基于物品品质）
-        const targetCount = this.getWitchTargetCount();
+        // 获取总攻击目标数量
+        const targetCount = this.getTotalTargetCount();
         
         // 获取可攻击的敌人单位列表（需要从游戏中获取）
         const enemyUnits = this.getEnemyUnits();
@@ -361,34 +494,46 @@ class Unit {
             })
             .slice(0, targetCount);
         
-        console.log(`女巫攻击：范围内${enemiesInRange.length}个敌人，攻击${targets.length}个目标`);
+        console.log(`${this.itemId}多目标攻击：范围内${enemiesInRange.length}个敌人，攻击${targets.length}个目标`);
         
         // 对每个目标造成完整伤害
         targets.forEach((target, index) => {
             const damage = this.attackPower + Utils.randomInt(-5, 5);
             target.takeDamage(damage, this);
-            console.log(`女巫攻击目标${index + 1}：对${target.itemId || 'enemy'}造成${damage}伤害`);
+            console.log(`${this.itemId}攻击目标${index + 1}：对${target.itemId || 'enemy'}造成${damage}伤害`);
         });
         
-        // 如果没有目标，女巫攻击失效
+        // 如果没有目标，攻击失效
         if (targets.length === 0) {
-            console.log('女巫攻击：攻击范围内没有敌人');
+            console.log(`${this.itemId}多目标攻击：攻击范围内没有敌人`);
         }
     }
 
-    // 获取女巫根据品质的攻击目标数量
+    // 获取总的攻击目标数量（基础1个 + 女巫品质加成 + 魔法阵加成）
+    getTotalTargetCount() {
+        let baseTargets = 1; // 基础攻击目标数
+        
+        // 女巫特殊技能：根据品质增加攻击目标
+        if (this.itemId === 'witch') {
+            const quality = this.itemQuality || 3;
+            const targetMap = {
+                3: 2, // 紫色：2个目标
+                4: 3, // 橙色：3个目标  
+                5: 4  // 红色：4个目标
+            };
+            baseTargets = targetMap[quality] || 2;
+        }
+        
+        // 加上魔法阵等提供的额外目标数
+        const totalTargets = baseTargets + this.extraTargets;
+        
+        console.log(`${this.itemId}攻击目标数: 基础${baseTargets} + 额外${this.extraTargets} = 总计${totalTargets}`);
+        return totalTargets;
+    }
+
+    // 获取女巫根据品质的攻击目标数量（保留用于兼容性）
     getWitchTargetCount() {
-        const quality = this.itemQuality || 3; // 默认紫色品质
-        
-        const targetMap = {
-            3: 2, // 紫色：2个目标
-            4: 3, // 橙色：3个目标  
-            5: 4  // 红色：4个目标
-        };
-        
-        const targetCount = targetMap[quality] || 2;
-        console.log(`女巫品质${quality}，可攻击${targetCount}个目标`);
-        return targetCount;
+        return this.getTotalTargetCount();
     }
 
     // 获取敌方单位列表（需要从游戏系统中获取）

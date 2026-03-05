@@ -4,6 +4,7 @@ class Renderer {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.particles = [];
+        this.areaEffects = []; // 范围攻击效果
     }
 
     clear() {
@@ -89,6 +90,19 @@ class Renderer {
             
             particle.render(this.ctx);
         }
+        
+        // 更新和绘制范围攻击效果
+        for (let i = this.areaEffects.length - 1; i >= 0; i--) {
+            const effect = this.areaEffects[i];
+            effect.update();
+            
+            if (effect.life <= 0) {
+                this.areaEffects.splice(i, 1);
+                continue;
+            }
+            
+            effect.render(this.ctx);
+        }
     }
 
     addParticle(x, y, type = 'explosion') {
@@ -105,6 +119,12 @@ class Renderer {
                 'explosion'
             );
         }
+    }
+
+    addAreaAttackEffect(x, y, radius) {
+        // 创建范围攻击显示效果
+        const effect = new AreaAttackEffect(x, y, radius);
+        this.areaEffects.push(effect);
     }
 
     drawUI(gameState) {
@@ -178,6 +198,53 @@ class Particle {
         ctx.fillStyle = this.color;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.restore();
+    }
+}
+
+// 范围攻击效果类
+class AreaAttackEffect {
+    constructor(x, y, radius) {
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.life = this.maxLife = 30; // 0.5秒显示时间
+        this.maxRadius = radius;
+    }
+
+    update() {
+        this.life--;
+    }
+
+    render(ctx) {
+        ctx.save();
+        
+        const alpha = this.life / this.maxLife;
+        const currentRadius = this.maxRadius * (1 + (1 - alpha) * 0.2); // 略微扩大效果
+        
+        // 绘制外圈（橙色，表示攻击范围）
+        ctx.globalAlpha = alpha * 0.4;
+        ctx.strokeStyle = '#FF6600';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 4]);
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, currentRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // 绘制内圈填充（淡橙色）
+        ctx.globalAlpha = alpha * 0.1;
+        ctx.fillStyle = '#FF6600';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, currentRadius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // 绘制中心标记
+        ctx.globalAlpha = alpha * 0.8;
+        ctx.fillStyle = '#FF3300';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
         ctx.fill();
         
         ctx.restore();
