@@ -11,12 +11,30 @@
     display: none !important;
 }
 
+/* 数字显示优化 - 确保数字在移动端正确显示 */
+#player-gold, 
+#current-wave,
+#player-health-text,
+#enemy-health-text,
+.shop-item-price,
+.cooldown-value,
+#shop-info-cost,
+.gold-display,
+#wave-number {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif !important;
+    font-variant-numeric: tabular-nums !important;
+    -webkit-font-feature-settings: "tnum" !important;
+    font-feature-settings: "tnum" !important;
+    -webkit-text-size-adjust: 100% !important;
+    text-rendering: optimizeLegibility !important;
+}
+
 html, body {
     height: 100%;
     height: 100vh;
     /* 支持安全区域 */
     height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Color Emoji', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     overflow: hidden;
@@ -24,6 +42,10 @@ html, body {
     -webkit-overflow-scrolling: touch;
     /* 防止意外缩放 */
     touch-action: manipulation;
+    /* 强制使用等宽数字，防止数字字体变化 */
+    font-variant-numeric: tabular-nums;
+    -webkit-font-feature-settings: "tnum";
+    font-feature-settings: "tnum";
 }
 
 /* 主容器 - 竖屏优化 */
