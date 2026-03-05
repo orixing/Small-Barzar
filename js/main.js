@@ -15,6 +15,29 @@ document.addEventListener('DOMContentLoaded', function() {
         // 全局游戏对象（用于调试）
         window.game = game;
         console.log('游戏实例创建成功！');
+        
+        // 测试函数：清空背包并添加指定物品
+        window.setupTestBackpack = function() {
+            console.log('=== 开始设置测试背包 ===');
+            
+            // 清空背包
+            game.inventorySystem.clearBackpack();
+            
+            // 添加魔力水晶（紫色品质）
+            game.inventorySystem.addSpecificItemToBackpack('crystal', 3);
+            
+            // 添加药剂师（蓝色品质）
+            game.inventorySystem.addSpecificItemToBackpack('alchemist', 2);
+            
+            console.log('测试背包设置完成！');
+            console.log('当前背包内容:', game.inventorySystem.backpack);
+        };
+        
+        // 2秒后自动执行测试
+        setTimeout(() => {
+            window.setupTestBackpack();
+        }, 2000);
+        
     } catch (error) {
         console.error('游戏初始化失败:', error);
         alert('游戏初始化失败: ' + error.message);

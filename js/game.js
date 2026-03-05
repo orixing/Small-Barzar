@@ -236,12 +236,13 @@ class Game {
         }
     }
 
-    spawnPlayerUnitBySpecificType(itemId, unitType, bonusAttack = 0, bonusHealth = 0) {
+    spawnPlayerUnitBySpecificType(itemId, unitType, bonusAttack = 0, bonusHealth = 0, itemQuality = null) {
         if (this.gameState === 'playing' && this.gamePhase === 'battle') {
             const unit = new Unit(unitType, 'player', 
                 70 + Utils.randomInt(-20, 20), 
                 this.canvas.height / 2 + Utils.randomInt(-30, 30),
-                itemId  // 传递具体的物品ID
+                itemId,  // 传递具体的物品ID
+                itemQuality  // 传递物品品质
             );
             
             // 应用额外的攻击力加成（主要用于角斗士）
@@ -308,8 +309,10 @@ class Game {
             return 3; // 第8-9波每次刷3个
         } else if (this.wave >= 5) {
             return 2; // 第5-7波每次刷2个
+        } else if (this.wave === 1) {
+            return 3; // 第1波每次刷3个（测试女巫多目标攻击）
         } else {
-            return 1; // 第1-4波每次刷1个
+            return 1; // 第2-4波每次刷1个
         }
     }
 

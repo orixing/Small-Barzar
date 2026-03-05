@@ -1319,7 +1319,7 @@ html, body {
     border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* 物品介绍区域 - 已隐藏 */
+/* 物品介绍区域 - 隐藏 */
 .shop-info-description {
     display: none;
 }

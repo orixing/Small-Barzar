@@ -6,7 +6,8 @@
       "Bash(curl -s http://localhost:8000)",
       "Bash(node -c /mnt/e/Project/Test/js/inventory.js)",
       "Bash(node -c /mnt/e/Project/Test/js/entities.js)",
-      "Bash(node -c /mnt/e/Project/Test/js/game.js)"
+      "Bash(node -c /mnt/e/Project/Test/js/game.js)",
+      "Bash(python3 -m http.server 8000 --directory /mnt/e/Project/Test)"
     ],
     "deny": [],
     "ask": []

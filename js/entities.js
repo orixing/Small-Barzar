@@ -2,9 +2,10 @@
 
 // 基础单位类
 class Unit {
-    constructor(type, team, x, y, itemId = null) {
+    constructor(type, team, x, y, itemId = null, itemQuality = null) {
         this.type = type;
         this.itemId = itemId; // 具体的物品ID，如'warrior', 'assassin'等
+        this.itemQuality = itemQuality; // 物品品质，用于女巫等技能
         this.team = team; // 'player' or 'enemy'
         this.x = x;
         this.y = y;
@@ -67,7 +68,8 @@ class Unit {
                 // 魔法单位
                 apprentice: 8,  // 学徒
                 waterElemental: 10,  // 水元素
-                alchemist: 8   // 药剂师
+                alchemist: 8,   // 药剂师
+                witch: 8       // 女巫
             };
             
             if (specificSpeeds[this.itemId]) {
@@ -112,7 +114,8 @@ class Unit {
                 // 魔法单位
                 apprentice: 20,  // 学徒
                 waterElemental: 40,  // 水元素
-                alchemist: 30   // 药剂师
+                alchemist: 30,   // 药剂师
+                witch: 20       // 女巫
             };
             
             if (specificAttackPower[this.itemId]) {
@@ -214,7 +217,8 @@ class Unit {
                 apprentice: '🧝‍♂️',
                 waterElemental: '🌊',
                 golem: '🤖',
-                alchemist: '⚗️'
+                alchemist: '⚗️',
+                witch: '🧙🏿‍♀️'
             };
             
             if (specificIcons[this.itemId]) {
@@ -309,9 +313,14 @@ class Unit {
 
         this.attackCooldown = this.maxAttackCooldown;
         
-        // 造成伤害
-        const damage = this.attackPower + Utils.randomInt(-5, 5);
-        this.target.takeDamage(damage, this);
+        // 女巫特殊攻击：多目标攻击
+        if (this.itemId === 'witch') {
+            this.multiTargetAttack();
+        } else {
+            // 普通单目标攻击
+            const damage = this.attackPower + Utils.randomInt(-5, 5);
+            this.target.takeDamage(damage, this);
+        }
 
         // 播放攻击效果
         Utils.playSound('attack');
@@ -326,6 +335,69 @@ class Unit {
     areaAttack() {
         // 法师的范围攻击（简化版）
         // 在实际游戏中可以添加更复杂的范围效果
+    }
+
+    // 女巫的多目标攻击
+    multiTargetAttack() {
+        // 获取女巫的目标数量（基于物品品质）
+        const targetCount = this.getWitchTargetCount();
+        
+        // 获取可攻击的敌人单位列表（需要从游戏中获取）
+        const enemyUnits = this.getEnemyUnits();
+        
+        // 筛选攻击范围内的敌人
+        const enemiesInRange = enemyUnits.filter(enemy => {
+            if (!enemy.alive) return false;
+            const distance = Utils.distance(this.x, this.y, enemy.x, enemy.y);
+            return distance <= this.attackRange;
+        });
+        
+        // 按距离排序，选择最近的N个目标
+        const targets = enemiesInRange
+            .sort((a, b) => {
+                const distA = Utils.distance(this.x, this.y, a.x, a.y);
+                const distB = Utils.distance(this.x, this.y, b.x, b.y);
+                return distA - distB;
+            })
+            .slice(0, targetCount);
+        
+        console.log(`女巫攻击：范围内${enemiesInRange.length}个敌人，攻击${targets.length}个目标`);
+        
+        // 对每个目标造成完整伤害
+        targets.forEach((target, index) => {
+            const damage = this.attackPower + Utils.randomInt(-5, 5);
+            target.takeDamage(damage, this);
+            console.log(`女巫攻击目标${index + 1}：对${target.itemId || 'enemy'}造成${damage}伤害`);
+        });
+        
+        // 如果没有目标，女巫攻击失效
+        if (targets.length === 0) {
+            console.log('女巫攻击：攻击范围内没有敌人');
+        }
+    }
+
+    // 获取女巫根据品质的攻击目标数量
+    getWitchTargetCount() {
+        const quality = this.itemQuality || 3; // 默认紫色品质
+        
+        const targetMap = {
+            3: 2, // 紫色：2个目标
+            4: 3, // 橙色：3个目标  
+            5: 4  // 红色：4个目标
+        };
+        
+        const targetCount = targetMap[quality] || 2;
+        console.log(`女巫品质${quality}，可攻击${targetCount}个目标`);
+        return targetCount;
+    }
+
+    // 获取敌方单位列表（需要从游戏系统中获取）
+    getEnemyUnits() {
+        // 从全局游戏对象获取敌方单位列表
+        if (window.game) {
+            return this.team === 'player' ? window.game.enemyUnits : window.game.playerUnits;
+        }
+        return [];
     }
 
     takeDamage(damage, attacker = null) {

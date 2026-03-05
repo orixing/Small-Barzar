@@ -257,6 +257,39 @@ class InventorySystem {
                 minQuality: 2, // 蓝色起始
                 description: '加速相邻魔法物品'
             },
+            witch: {
+                name: '女巫',
+                icon: '🧙🏿‍♀️',
+                size: 1,
+                baseValue: 1,
+                unitType: 'mage',
+                unitCount: 1,
+                cooldown: 480, // 8秒
+                minQuality: 3, // 紫色起始
+                description: '同时攻击多个敌人'
+            },
+            laboratory: {
+                name: '实验室',
+                icon: '🧪',
+                size: 2,
+                baseValue: 2,
+                unitType: 'mage',
+                unitCount: 0, // 不召唤单位
+                cooldown: -1, // 被动效果，无冷却
+                minQuality: 3, // 紫色起始
+                description: '每有一个魔法物品，给所有物品+8攻击力'
+            },
+            crystal: {
+                name: '魔力水晶',
+                icon: '💎',
+                size: 1,
+                baseValue: 2,
+                unitType: 'mage',
+                unitCount: 0, // 不召唤单位
+                cooldown: 240, // 4秒
+                minQuality: 3, // 紫色起始
+                description: '为另一个小型物品充能；被加速时充能自己'
+            },
             alchemyLab: {
                 name: '炼金工房',
                 icon: '🏭',
@@ -332,11 +365,11 @@ class InventorySystem {
     
     // 初始化测试物品到背包
     initializeTestItems() {
-        // 添加药剂师到背包（蓝色品质）
-        const alchemistItem = {
-            id: 'alchemist',
-            template: this.itemTemplates.alchemist,
-            quality: 2, // 蓝色品质
+        // 添加实验室到背包（紫色品质）
+        const laboratoryItem = {
+            id: 'laboratory',
+            template: this.itemTemplates.laboratory,
+            quality: 3, // 紫色品质
             cooldownRemaining: 0,
             isReady: false,
             attackBonus: 0,
@@ -351,78 +384,23 @@ class InventorySystem {
             golemAdjacentBonus: 0,
             alchemyGoldGeneration: 1,
             alchemySellBonus: 2,
-            accelerationTime: 0
+            accelerationTime: 0,
+            laboratoryBonus: 0 // 实验室全局攻击力加成
         };
         
         // 计算实际冷却时间
-        const alchemistCooldown = this.getActualCooldown(alchemistItem);
-        alchemistItem.cooldownRemaining = alchemistCooldown;
+        const laboratoryCooldown = this.getActualCooldown(laboratoryItem);
+        laboratoryItem.cooldownRemaining = laboratoryCooldown;
         
-        // 添加魔偶到背包（蓝色品质）
-        const golemItem = {
-            id: 'golem',
-            template: this.itemTemplates.golem,
-            quality: 2, // 蓝色品质（起始品质）
-            cooldownRemaining: 0,
-            isReady: false,
-            attackBonus: 0,
-            cooldownReduction: 0,
-            meleeBonus: 0,
-            militiaBonus: 0,
-            barbarianBonus: 0,
-            barbarianAdjacentBonus: 0,
-            apprenticeBonus: 0,
-            staffMageBonus: 10,
-            staffWinBonus: 0,
-            golemAdjacentBonus: 0,
-            alchemyGoldGeneration: 1,
-            alchemySellBonus: 2,
-            accelerationTime: 0
-        };
+        // 将实验室放在背包第0格
+        this.backpack[0] = laboratoryItem;
         
-        // 计算实际冷却时间
-        const golemCooldown = this.getActualCooldown(golemItem);
-        golemItem.cooldownRemaining = golemCooldown;
+        // 其余格子清空
+        for (let i = 1; i < this.backpack.length; i++) {
+            this.backpack[i] = null;
+        }
         
-        // 添加炼金工房到背包（蓝色品质）
-        const alchemyLabItem = {
-            id: 'alchemyLab',
-            template: this.itemTemplates.alchemyLab,
-            quality: 2, // 蓝色品质
-            cooldownRemaining: 0,
-            isReady: false,
-            attackBonus: 0,
-            cooldownReduction: 0,
-            meleeBonus: 0,
-            militiaBonus: 0,
-            barbarianBonus: 0,
-            barbarianAdjacentBonus: 0,
-            apprenticeBonus: 0,
-            staffMageBonus: 10,
-            staffWinBonus: 0,
-            golemAdjacentBonus: 0,
-            alchemyGoldGeneration: 1, // 蓝色品质默认值
-            alchemySellBonus: 2, // 蓝色品质默认值
-            accelerationTime: 0
-        };
-        
-        // 计算实际冷却时间
-        const alchemyLabCooldown = this.getActualCooldown(alchemyLabItem);
-        alchemyLabItem.cooldownRemaining = alchemyLabCooldown;
-        
-        // 将药剂师放在背包第0格
-        this.backpack[0] = alchemistItem;
-        
-        // 将魔偶放在背包第1-2格（大小为2）
-        this.backpack[1] = golemItem;
-        this.backpack[2] = 'occupied';
-        
-        // 将炼金工房放在背包第3-5格（大小为3）
-        this.backpack[3] = alchemyLabItem;
-        this.backpack[4] = 'occupied';
-        this.backpack[5] = 'occupied';
-        
-        console.log('背包初始化完成：添加了药剂师(蓝色)、魔偶(蓝色)和炼金工房(蓝色)');
+        console.log('背包初始化完成：添加了实验室(紫色品质)');
         
         // 更新背包显示
         this.updateBackpackDisplay();
@@ -734,6 +712,8 @@ class InventorySystem {
             // 如果是法杖升级，刷新法杖效果
             if (item.id === 'staff') {
                 this.applyStaffBonus();
+        this.applyLaboratoryBonus();
+                this.applyLaboratoryBonus();
             }
             
             // 如果是魔偶升级，刷新魔偶效果
@@ -894,7 +874,8 @@ class InventorySystem {
                     golemAdjacentBonus: 0, // 魔偶特殊技能：相邻魔法单位攻击力加成
                     alchemyGoldGeneration: 1, // 炼金工房特殊技能：每次产生的金币数
                     alchemySellBonus: 2, // 炼金工房特殊技能：出售物品额外金币数
-                    accelerationTime: 0 // 战旗加速剩余时间
+                    accelerationTime: 0, // 战旗加速剩余时间
+                    laboratoryBonus: 0 // 实验室全局攻击力加成
                 };
                 
                 // 计算实际的冷却时间（考虑升级效果）
@@ -1140,6 +1121,7 @@ class InventorySystem {
         
         // 刷新法杖效果
         this.applyStaffBonus();
+        this.applyLaboratoryBonus();
         
         // 刷新魔偶效果
         this.applyGolemAdjacentBonus();
@@ -1183,6 +1165,7 @@ class InventorySystem {
         
         // 刷新法杖效果
         this.applyStaffBonus();
+        this.applyLaboratoryBonus();
         
         // 刷新魔偶效果
         this.applyGolemAdjacentBonus();
@@ -1240,6 +1223,12 @@ class InventorySystem {
             return;
         }
         
+        // 魔力水晶特殊处理：主动充能
+        if (item.id === 'crystal') {
+            this.triggerCrystalActiveCharge(item);
+            return;
+        }
+        
         // 计算实际生产的单位数（基础数量 + 民兵团额外单位）
         let actualUnitCount = template.unitCount;
         if (item.id === 'militia') {
@@ -1264,7 +1253,7 @@ class InventorySystem {
                     bonusAttack += item.swordmasterBonus || 0;
                 }
                 
-                this.game.spawnPlayerUnitBySpecificType(item.id, template.unitType, bonusAttack, bonusHealth);
+                this.game.spawnPlayerUnitBySpecificType(item.id, template.unitType, bonusAttack, bonusHealth, item.quality);
             }, i * 200); // 0.2秒间隔
         }
         
@@ -1512,6 +1501,8 @@ class InventorySystem {
                             
                             // 刷新法杖效果（因为物品位置改变了）
                             this.applyStaffBonus();
+        this.applyLaboratoryBonus();
+                this.applyLaboratoryBonus();
                             
                             // 刷新魔偶效果（因为物品位置改变了）
                             this.applyGolemAdjacentBonus();
@@ -1889,6 +1880,7 @@ class InventorySystem {
         
         // 刷新法杖效果（因为可能出售了法杖或魔法物品）
         this.applyStaffBonus();
+        this.applyLaboratoryBonus();
         
         // 播放音效
         Utils.playSound('sell');
@@ -1965,6 +1957,7 @@ class InventorySystem {
         
         // 刷新法杖效果（物品移除可能影响法杖效果）
         this.applyStaffBonus();
+        this.applyLaboratoryBonus();
     }
     
     showSellEffect(sellPrice) {
@@ -2743,6 +2736,7 @@ class InventorySystem {
         
         // 刷新法杖效果（因为物品从战斗区移除了）
         this.applyStaffBonus();
+        this.applyLaboratoryBonus();
         
         // 刷新魔偶效果（因为物品从战斗区移除了）
         this.applyGolemAdjacentBonus();
@@ -2928,6 +2922,7 @@ class InventorySystem {
         
         // 刷新法杖效果（物品位置变化可能影响法杖效果）
         this.applyStaffBonus();
+        this.applyLaboratoryBonus();
         
         // 刷新魔偶效果（物品位置变化可能影响魔偶效果）
         this.applyGolemAdjacentBonus();
@@ -3009,7 +3004,8 @@ class InventorySystem {
                 gladiatorBonus: 0, // 角斗士特殊技能：战斗攻击力加成
                 accelerationTime: 0, // 战旗加速剩余时间
                 giantHealthBonus: 0, // 巨人升级效果：品质生命值加成
-                swordmasterBonus: 0 // 剑圣特殊技能：相邻召唤攻击力加成
+                swordmasterBonus: 0, // 剑圣特殊技能：相邻召唤攻击力加成
+                laboratoryBonus: 0 // 实验室全局攻击力加成
             };
             
             // 计算实际的冷却时间（考虑升级效果）
@@ -3253,7 +3249,7 @@ class InventorySystem {
         const price = this.getItemPrice(template, quality);
         document.getElementById('shop-info-cost').textContent = `💰${price}`;
         
-        // 隐藏物品描述
+        // 隐藏物品描述区域
         const descriptionElement = document.getElementById('shop-info-description');
         if (descriptionElement) {
             descriptionElement.style.display = 'none';
@@ -3450,6 +3446,34 @@ class InventorySystem {
             if (skillStatusElement) {
                 skillStatusElement.style.display = 'none';
             }
+        } else if (item.id === 'witch' && specialSkillElement) {
+            specialSkillElement.classList.remove('hidden');
+            specialSkillElement.classList.add('passive'); // 被动效果，添加分割线
+            
+            const skillDescElement = document.getElementById('skill-description');
+            if (skillDescElement) {
+                const targetCount = this.getWitchTargetCount(item.quality);
+                skillDescElement.innerHTML = `同时攻击 <span style="color: white; font-weight: bold;">${targetCount}个</span> 敌人`;
+            }
+            
+            const skillStatusElement = document.getElementById('skill-status');
+            if (skillStatusElement) {
+                skillStatusElement.style.display = 'none';
+            }
+        } else if (item.id === 'laboratory' && specialSkillElement) {
+            specialSkillElement.classList.remove('hidden');
+            specialSkillElement.classList.add('passive'); // 被动效果，添加分割线
+            
+            const skillDescElement = document.getElementById('skill-description');
+            if (skillDescElement) {
+                const bonusPerMage = this.getLaboratoryQualityBonus(item.quality);
+                skillDescElement.innerHTML = `每有一个<span style="color: #9b59b6; font-weight: bold;">魔法物品</span>，给所有物品 <span style="color: white; font-weight: bold;">+${bonusPerMage}攻击力</span>`;
+            }
+            
+            const skillStatusElement = document.getElementById('skill-status');
+            if (skillStatusElement) {
+                skillStatusElement.style.display = 'none';
+            }
         } else if (item.id === 'alchemyLab' && specialSkillElement) {
             specialSkillElement.classList.remove('hidden');
             specialSkillElement.classList.remove('passive'); // 主动效果，无分割线
@@ -3460,6 +3484,21 @@ class InventorySystem {
                 const sellBonus = item.alchemySellBonus || 2;
                 skillDescElement.innerHTML = `获得 <span style="color: #f1c40f; font-weight: bold;">${goldAmount}金币</span><br>` +
                                            `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">即使在背包也生效，出售物品额外<span style="color: #f1c40f; font-weight: bold;">+${sellBonus}金币</span></div>`;
+            }
+            
+            const skillStatusElement = document.getElementById('skill-status');
+            if (skillStatusElement) {
+                skillStatusElement.style.display = 'none';
+            }
+        } else if (item.id === 'crystal' && specialSkillElement) {
+            specialSkillElement.classList.remove('hidden');
+            specialSkillElement.classList.remove('passive'); // 主动效果，无分割线
+            
+            const skillDescElement = document.getElementById('skill-description');
+            if (skillDescElement) {
+                const chargeAmount = this.getCrystalChargeAmount(item.quality);
+                skillDescElement.innerHTML = `为另一个小型物品 <span style="color: #17a2b8; font-weight: bold;">充能${chargeAmount}秒</span><br>` +
+                                           `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">被加速时为自身 <span style="color: #17a2b8; font-weight: bold;">充能${chargeAmount}秒</span></div>`;
             }
             
             const skillStatusElement = document.getElementById('skill-status');
@@ -3591,7 +3630,8 @@ class InventorySystem {
                 apprentice: { health: 100, attack: 20, range: 120, speed: 8, baseDamage: 20 },  // 小型魔法单位
                 waterElemental: { health: 200, attack: 40, range: 120, speed: 10, baseDamage: 40 },  // 中型魔法单位
                 golem: { health: 200, attack: 40, range: 120, speed: 8, baseDamage: 40 },  // 中型魔法单位
-                alchemist: { health: 100, attack: 30, range: 120, speed: 8, baseDamage: 20 }  // 小型魔法单位
+                alchemist: { health: 100, attack: 30, range: 120, speed: 8, baseDamage: 20 },  // 小型魔法单位
+                witch: { health: 100, attack: 20, range: 120, speed: 8, baseDamage: 20 }  // 小型魔法单位
             };
             
             if (specificStats[unitKey]) {
@@ -3645,6 +3685,11 @@ class InventorySystem {
                 // 宝剑等支援物品的通用攻击力加成
                 if (item && item.attackBonus) {
                     stats.attack += item.attackBonus;
+                }
+                
+                // 实验室全局攻击力加成
+                if (item && item.laboratoryBonus) {
+                    stats.attack += item.laboratoryBonus;
                 }
                 
                 return stats;
@@ -4089,6 +4134,162 @@ class InventorySystem {
         this.updateInventoryDisplay();
     }
     
+    // 应用实验室的全局攻击力加成效果
+    applyLaboratoryBonus() {
+        // 清除所有物品的实验室攻击力加成
+        for (let i = 0; i < this.inventory.length; i++) {
+            const item = this.inventory[i];
+            if (item && item !== 'occupied') {
+                // 移除实验室加成（保留其他加成）
+                if (item.laboratoryBonus) {
+                    item.laboratoryBonus = 0;
+                }
+            }
+        }
+        
+        // 重新计算实验室加成
+        for (let i = 0; i < this.inventory.length; i++) {
+            const labItem = this.inventory[i];
+            if (labItem && labItem !== 'occupied' && labItem.id === 'laboratory') {
+                // 计算当前战斗区中的魔法物品数量
+                let mageItemCount = 0;
+                for (let j = 0; j < this.inventory.length; j++) {
+                    const item = this.inventory[j];
+                    if (item && item !== 'occupied' && 
+                        item.template.unitType === 'mage') {
+                        mageItemCount++;
+                    }
+                }
+                
+                // 根据实验室品质计算攻击力加成
+                const bonusPerMage = this.getLaboratoryQualityBonus(labItem.quality);
+                const totalLaboratoryBonus = mageItemCount * bonusPerMage;
+                
+                console.log(`实验室检测到${mageItemCount}个魔法物品，总攻击力加成: ${mageItemCount}×${bonusPerMage}=${totalLaboratoryBonus}`);
+                
+                // 为所有物品添加实验室攻击力加成（不限类型）
+                for (let j = 0; j < this.inventory.length; j++) {
+                    const targetItem = this.inventory[j];
+                    if (targetItem && targetItem !== 'occupied') {
+                        // 初始化laboratoryBonus属性
+                        if (!targetItem.laboratoryBonus) {
+                            targetItem.laboratoryBonus = 0;
+                        }
+                        
+                        // 累加实验室加成（支持多个实验室）
+                        targetItem.laboratoryBonus += totalLaboratoryBonus;
+                    }
+                }
+                
+                console.log(`实验室为所有物品提供攻击力加成: +${totalLaboratoryBonus}`);
+            }
+        }
+        
+        // 更新显示
+        this.updateInventoryDisplay();
+    }
+    
+    // 获取实验室品质对应的每个魔法物品加成值
+    getLaboratoryQualityBonus(quality) {
+        const bonusMap = {
+            3: 8,  // 紫色：每个魔法物品+8攻击力
+            4: 14, // 橙色：每个魔法物品+14攻击力
+            5: 20  // 红色：每个魔法物品+20攻击力
+        };
+        return bonusMap[quality] || 8;
+    }
+    
+    // 统一的加速处理函数（用于魔力水晶被加速检测）
+    addAccelerationTime(item, accelerationTime) {
+        const oldTime = item.accelerationTime || 0;
+        item.accelerationTime = oldTime + accelerationTime;
+        
+        // 魔力水晶特殊效果：被加速时充能自己
+        if (item.id === 'crystal' && accelerationTime > 0) {
+            console.log(`魔力水晶被加速${accelerationTime/60}秒，触发自我充能`);
+            this.triggerCrystalSelfCharge(item);
+        }
+        
+        return item.accelerationTime;
+    }
+    
+    // 魔力水晶主动充能：为另一个小型物品充能
+    triggerCrystalActiveCharge(crystalItem) {
+        const chargeAmount = this.getCrystalChargeAmount(crystalItem.quality);
+        const chargeFrames = chargeAmount * 60; // 转换为帧数
+        
+        console.log(`魔力水晶(品质${crystalItem.quality})开始主动充能，充能时长: ${chargeAmount}秒`);
+        
+        // 找到所有小型物品（size=1）作为充能目标
+        const smallItems = [];
+        for (let i = 0; i < this.inventory.length; i++) {
+            const item = this.inventory[i];
+            if (item && item !== 'occupied' && 
+                item.template.size === 1 && 
+                item.id !== 'crystal' && // 不充能其他魔力水晶
+                item.cooldownRemaining > 0) { // 只充能在冷却中的物品
+                smallItems.push({item, index: i});
+            }
+        }
+        
+        if (smallItems.length === 0) {
+            console.log('魔力水晶主动充能：没有找到可充能的小型物品');
+            return;
+        }
+        
+        // 随机选择一个小型物品进行充能
+        const randomIndex = Math.floor(Math.random() * smallItems.length);
+        const {item: targetItem, index: targetIndex} = smallItems[randomIndex];
+        
+        // 执行充能
+        const oldCooldown = targetItem.cooldownRemaining;
+        targetItem.cooldownRemaining = Math.max(0, targetItem.cooldownRemaining - chargeFrames);
+        
+        // 如果充能后冷却时间归零，标记为准备就绪
+        if (targetItem.cooldownRemaining === 0) {
+            targetItem.isReady = true;
+        }
+        
+        console.log(`✓ 魔力水晶为${targetItem.template.name}(位置${targetIndex})充能${chargeAmount}秒，冷却时间: ${Math.round(oldCooldown/60*10)/10}s -> ${Math.round(targetItem.cooldownRemaining/60*10)/10}s`);
+        
+        // 更新显示
+        this.updateInventoryDisplay();
+    }
+    
+    // 魔力水晶被动响应：被加速时充能自己
+    triggerCrystalSelfCharge(crystalItem) {
+        const chargeAmount = this.getCrystalChargeAmount(crystalItem.quality);
+        const chargeFrames = chargeAmount * 60; // 转换为帧数
+        
+        // 只有在冷却中才能充能自己
+        if (crystalItem.cooldownRemaining > 0) {
+            const oldCooldown = crystalItem.cooldownRemaining;
+            crystalItem.cooldownRemaining = Math.max(0, crystalItem.cooldownRemaining - chargeFrames);
+            
+            // 如果充能后冷却时间归零，标记为准备就绪
+            if (crystalItem.cooldownRemaining === 0) {
+                crystalItem.isReady = true;
+            }
+            
+            console.log(`✓ 魔力水晶自我充能${chargeAmount}秒，冷却时间: ${Math.round(oldCooldown/60*10)/10}s -> ${Math.round(crystalItem.cooldownRemaining/60*10)/10}s`);
+            
+            // 更新显示
+            this.updateInventoryDisplay();
+        } else {
+            console.log('魔力水晶自我充能：当前不在冷却中，无需充能');
+        }
+    }
+    
+    // 获取魔力水晶品质对应的充能时间
+    getCrystalChargeAmount(quality) {
+        const chargeMap = {
+            3: 1, // 紫色：1秒
+            4: 2, // 橙色：2秒
+            5: 3  // 红色：3秒
+        };
+        return chargeMap[quality] || 1;
+    }
+    
     // 战斗胜利时法杖成长
     onBattleVictory() {
         for (let i = 0; i < this.inventory.length; i++) {
@@ -4106,6 +4307,7 @@ class InventorySystem {
         
         // 重新应用法杖效果（因为加成增加了）
         this.applyStaffBonus();
+        this.applyLaboratoryBonus();
     }
     
     // 获取法杖品质对应的每次获胜加成
@@ -4118,6 +4320,16 @@ class InventorySystem {
             5: 12   // 红色：每次获胜+12攻击力
         };
         return winBonusMap[quality] || 4; // 默认为绿色加成
+    }
+
+    // 获取女巫品质对应的攻击目标数量
+    getWitchTargetCount(quality) {
+        const targetMap = {
+            3: 2, // 紫色：2个目标
+            4: 3, // 橙色：3个目标  
+            5: 4  // 红色：4个目标
+        };
+        return targetMap[quality] || 2;
     }
     
     // 获取品质对应的颜色
@@ -4642,7 +4854,7 @@ class InventorySystem {
             const item = this.inventory[i];
             if (item && item !== 'occupied' && item.template.unitType === 'melee' && item.id !== 'warBanner') {
                 // 累加加速时间
-                item.accelerationTime = (item.accelerationTime || 0) + accelerationTime;
+                this.addAccelerationTime(item, accelerationTime);
                 acceleratedCount++;
             }
         }
@@ -4674,7 +4886,7 @@ class InventorySystem {
             
             // 累加加速时间
             const oldAcceleration = targetItem.accelerationTime || 0;
-            targetItem.accelerationTime = oldAcceleration + accelerationTime;
+            this.addAccelerationTime(targetItem, accelerationTime);
             acceleratedCount++;
             
             console.log(`✓ 药剂师为${position}侧魔法物品(${targetItem.template.name})提供1秒加速，加速时间: ${oldAcceleration} -> ${targetItem.accelerationTime}`);
@@ -4839,6 +5051,68 @@ class InventorySystem {
             // 背包完全没有空位，购买失败
             console.log('背包也满了，无法购买');
             return;
+        }
+    }
+    
+    // 清空背包
+    clearBackpack() {
+        this.backpack = new Array(6).fill(null);
+        console.log('背包已清空');
+        this.updateBackpackDisplay();
+    }
+    
+    // 向背包添加指定物品
+    addSpecificItemToBackpack(itemId, quality = null) {
+        const template = this.itemTemplates[itemId];
+        if (!template) {
+            console.log(`未找到物品模板: ${itemId}`);
+            return false;
+        }
+        
+        // 使用指定品质或默认最低品质
+        const itemQuality = quality !== null ? quality : template.minQuality;
+        
+        // 创建物品实例
+        const newItem = {
+            id: itemId,
+            template: template,
+            quality: itemQuality,
+            isReady: false,
+            meleeBonus: 0,
+            attackBonus: 0,
+            barbarianAdjacentBonus: 0,
+            staffMageBonus: template.id === 'staff' ? 10 : 0,
+            staffWinBonus: 0,
+            gladiatorBonus: 0,
+            giantHealthBonus: 0,
+            swordmasterBonus: 0
+        };
+        
+        // 计算实际冷却时间
+        const actualCooldown = this.getActualCooldown(newItem);
+        newItem.cooldownRemaining = actualCooldown;
+        
+        // 特殊物品的品质加成计算
+        if (newItem.id === 'giant') {
+            const qualityLevelsAboveMin = newItem.quality - template.minQuality;
+            newItem.giantHealthBonus = qualityLevelsAboveMin * 100;
+        }
+        
+        if (newItem.id === 'alchemyLab') {
+            const qualityLevelsAboveMin = newItem.quality - template.minQuality;
+            newItem.alchemyGoldGeneration = 1 + qualityLevelsAboveMin;
+            newItem.alchemySellBonus = 2 + qualityLevelsAboveMin;
+        }
+        
+        // 添加到背包
+        const success = this.addItemToBackpackAutoSlot(newItem);
+        if (success) {
+            console.log(`成功添加${template.name}(品质${itemQuality})到背包`);
+            this.updateBackpackDisplay();
+            return true;
+        } else {
+            console.log(`背包空间不足，无法添加${template.name}`);
+            return false;
         }
     }
     
