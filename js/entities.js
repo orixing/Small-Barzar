@@ -49,7 +49,7 @@ class Unit {
                 staff: 60,  // 不召唤单位，血量不重要
                 shield: 200,
                 
-                // 魔法单位 - 根据JSON配置
+                // 魔法物品 - 根据JSON配置
                 apprentice: 100,        // 学徒
                 waterElemental: 200,    // 水元素
                 golem: 200,             // 魔偶
@@ -70,7 +70,7 @@ class Unit {
             melee: 120,
             ranged: 80,
             tank: 200
-            // 删除了基础魔法单位(mage)的通用配置，所有魔法单位现在都使用JSON中的具体配置
+            // 删除了基础魔法物品(mage)的通用配置，所有魔法物品现在都使用JSON中的具体配置
         };
         return stats[this.type] || 100;
     }
@@ -80,7 +80,7 @@ class Unit {
         if (this.itemId === 'titan') {
             return 800;
         }
-        // 奥数魔像拥有条件护盾（需要相邻魔法单位）
+        // 奥数魔像拥有条件护盾（需要相邻魔法物品）
         if (this.itemId === 'golemArcane') {
             // 护盾数量根据品质等级决定
             const shieldByQuality = {
@@ -113,7 +113,7 @@ class Unit {
                 staff: 7,       // 法师
                 shield: 4,      // 盾兵
                 
-                // 魔法单位
+                // 魔法物品
                 apprentice: 8,  // 学徒
                 waterElemental: 10,  // 水元素
                 golemArcane: 6, // 奥数魔像
@@ -161,7 +161,7 @@ class Unit {
                 staff: 25,       // 法师
                 shield: 20,      // 盾牌
                 
-                // 魔法单位 - 根据JSON配置
+                // 魔法物品 - 根据JSON配置
                 apprentice: 10,      // 学徒 JSON: 10
                 waterElemental: 30,  // 水元素 JSON: 30
                 golem: 30,           // 魔偶 JSON: 30
@@ -192,7 +192,7 @@ class Unit {
             melee: 30,
             ranged: 80,
             tank: 35,
-            mage: 60  // 魔法单位攻击距离从50增加到60
+            mage: 60  // 魔法物品攻击距离从50增加到60
         };
         return ranges[this.type] || 50;
     }
@@ -242,7 +242,7 @@ class Unit {
                 staff: 20,
                 shield: 20,
                 
-                // 魔法单位 - 根据JSON配置
+                // 魔法物品 - 根据JSON配置
                 apprentice: 20,     // 学徒 JSON: 20
                 waterElemental: 40, // 水元素 JSON: 40
                 golem: 40,          // 魔偶 JSON: 40
@@ -288,7 +288,7 @@ class Unit {
                 staff: '🔮',
                 shield: '🛡️',
                 
-                // 魔法单位
+                // 魔法物品
                 apprentice: '🧝‍♂️',
                 waterElemental: '🌊',
                 golem: '🤖',

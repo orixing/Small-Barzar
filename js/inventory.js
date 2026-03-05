@@ -214,7 +214,7 @@ class InventorySystem {
                 description: '持续减少左侧单位冷却时间'
             },
             
-            // 魔法单位
+            // 魔法物品
             apprentice: {
                 name: '学徒',
                 icon: '🧝‍♂️',
@@ -898,7 +898,7 @@ class InventorySystem {
                     apprenticeBonus: 0, // 学徒特殊技能：魔法物品数量攻击力加成
                     staffMageBonus: 5, // 法杖特殊技能：魔法物品攻击力加成（基础+10）
                     staffWinBonus: 0, // 法杖特殊技能：每次获胜的额外加成累积
-                    golemAdjacentBonus: 0, // 魔偶特殊技能：相邻魔法单位攻击力加成
+                    golemAdjacentBonus: 0, // 魔偶特殊技能：相邻魔法物品攻击力加成
                     alchemyGoldGeneration: 1, // 炼金工房特殊技能：每次产生的金币数
                     alchemySellBonus: 2, // 炼金工房特殊技能：出售物品额外金币数
                     accelerationTime: 0, // 战旗加速剩余时间
@@ -2385,7 +2385,7 @@ class InventorySystem {
                     
                     // 只在进度有明显变化时更新DOM
                     if (progressFill.dataset.lastState !== stateKey) {
-                        progressFill.style.width = progressPercent + '%';
+                        progressFill.style.height = progressPercent + '%';
                         progressFill.className = `inventory-item-progress-fill ${isReady ? 'ready' : ''}`;
                         progressFill.dataset.lastState = stateKey;
                     }
@@ -2551,14 +2551,14 @@ class InventorySystem {
         if (isBackpack) {
             // 背包物品进度条始终为0
             progressFillElement.className = 'inventory-item-progress-fill';
-            progressFillElement.style.width = '0%';
+            progressFillElement.style.height = '0%';
         } else {
             // 战斗区物品有冷却时间（使用实际冷却时间计算进度）
             const actualCooldown = this.getActualCooldown(item);
             progressFillElement.className = `inventory-item-progress-fill ${item.isReady ? 'ready' : ''}`;
             const progressPercent = item.isReady ? 100 : 
                 ((actualCooldown - item.cooldownRemaining) / actualCooldown) * 100;
-            progressFillElement.style.width = progressPercent + '%';
+            progressFillElement.style.height = progressPercent + '%';
         }
         
         progressElement.appendChild(progressFillElement);
@@ -2645,7 +2645,7 @@ class InventorySystem {
         
         const progressFillElement = document.createElement('div');
         progressFillElement.className = 'inventory-item-progress-fill ready';
-        progressFillElement.style.width = '100%';
+        progressFillElement.style.height = '100%';
         
         progressElement.appendChild(progressFillElement);
         
@@ -3115,8 +3115,8 @@ class InventorySystem {
                 meleeBonus: 0, // 忍者特殊技能：近战攻击力加成
                 militiaBonus: 0, // 民兵团特殊技能：额外单位计数器
                 barbarianBonus: 0, // 野蛮人特殊技能：品质攻击力加成
-                apprenticeBonus: 0, // 学徒特殊技能：魔法单位数量攻击力加成
-                staffMageBonus: 5, // 法杖特殊技能：魔法单位攻击力加成（基础+10）
+                apprenticeBonus: 0, // 学徒特殊技能：魔法物品数量攻击力加成
+                staffMageBonus: 5, // 法杖特殊技能：魔法物品攻击力加成（基础+10）
                 staffWinBonus: 0, // 法杖特殊技能：每次获胜的额外加成累积
                 gladiatorBonus: 0, // 角斗士特殊技能：战斗攻击力加成
                 accelerationTime: 0, // 战旗加速剩余时间
@@ -5320,8 +5320,8 @@ class InventorySystem {
                 meleeBonus: 0, // 忍者特殊技能：近战攻击力加成
                 militiaBonus: 0, // 民兵团特殊技能：额外单位计数器
                 barbarianBonus: 0, // 野蛮人特殊技能：品质攻击力加成
-                apprenticeBonus: 0, // 学徒特殊技能：魔法单位数量攻击力加成
-                staffMageBonus: 5, // 法杖特殊技能：魔法单位攻击力加成（基础+10）
+                apprenticeBonus: 0, // 学徒特殊技能：魔法物品数量攻击力加成
+                staffMageBonus: 5, // 法杖特殊技能：魔法物品攻击力加成（基础+10）
                 staffWinBonus: 0, // 法杖特殊技能：每次获胜的额外加成累积
                 gladiatorBonus: 0, // 角斗士特殊技能：战斗攻击力加成
                 giantHealthBonus: 0, // 巨人升级效果：品质生命值加成
