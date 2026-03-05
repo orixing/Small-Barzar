@@ -127,7 +127,7 @@ class InventorySystem {
                 unitCount: 1,
                 cooldown: 540, // 9秒
                 minQuality: 4, // 橙品质起始
-                description: '相邻近战单位召唤时增强自身'
+                description: '相邻单位召唤时增强自身'
             },
             titan: {
                 name: '泰坦',
@@ -1325,8 +1325,8 @@ class InventorySystem {
             this.updateBackpackDisplay();
         }
         
-        // 武士特殊技能：检查相邻位置是否有武士，如果召唤的是近战单位则根据数量增加攻击力
-        if (template.unitType === 'melee') {
+        // 武士特殊技能：检查相邻位置是否有武士，任何单位召唤时都会增加武士攻击力
+        if (actualUnitCount > 0) {
             this.boostAdjacentSwordmasters(itemSlot, actualUnitCount);
         }
         
@@ -3398,7 +3398,7 @@ class InventorySystem {
             const skillDescElement = document.getElementById('skill-description');
             if (skillDescElement) {
                 const qualityBonus = item.quality === 4 ? '+10' : '+15'; // 橙色+10, 红色+15
-                skillDescElement.innerHTML = `相邻物品每召唤一个<span class="melee-badge">近战</span>单位，本场战斗武士攻击力 <span style="color: white; font-weight: bold;">${qualityBonus}</span>`;
+                skillDescElement.innerHTML = `相邻物品每召唤一个单位，本场战斗武士攻击力 <span style="color: white; font-weight: bold;">${qualityBonus}</span>`;
             }
             
             const skillStatusElement = document.getElementById('skill-status');

@@ -325,6 +325,9 @@ class Unit {
         // 寻找目标
         this.findTarget(enemyUnits);
 
+        // 计算排斥力（避免友军重叠）
+        const repulsionForce = this.calculateRepulsionForce();
+
         if (this.target && this.target.alive) {
             const distance = Utils.distance(this.x, this.y, this.target.x, this.target.y);
             
@@ -332,17 +335,19 @@ class Unit {
                 // 在攻击范围内，停止移动并攻击
                 this.moving = false;
                 this.attack();
+                // 即使在攻击时也应用排斥力，避免重叠
+                this.applyRepulsionForce(repulsionForce);
             } else {
-                // 追击目标
-                this.moveTowards(this.target.x, this.target.y);
+                // 追击目标，同时考虑排斥力
+                this.moveTowardsWithRepulsion(this.target.x, this.target.y, repulsionForce);
             }
         } else {
-            // 没有目标，向前移动
+            // 没有目标，向前移动，同时考虑排斥力
             const centerY = canvas.height / 2;
             if (this.team === 'player') {
-                this.moveTowards(canvas.width, centerY);
+                this.moveTowardsWithRepulsion(canvas.width, centerY, repulsionForce);
             } else {
-                this.moveTowards(0, centerY);
+                this.moveTowardsWithRepulsion(0, centerY, repulsionForce);
             }
         }
 
@@ -382,6 +387,81 @@ class Unit {
             this.x += (dx / distance) * this.speed;
             this.y += (dy / distance) * this.speed;
         }
+    }
+
+    // 带排斥力的移动方法
+    moveTowardsWithRepulsion(targetX, targetY, repulsionForce) {
+        this.moving = true;
+        const dx = targetX - this.x;
+        const dy = targetY - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance > 5) {
+            // 目标方向的力
+            const targetForceX = (dx / distance) * this.speed;
+            const targetForceY = (dy / distance) * this.speed;
+            
+            // 结合排斥力
+            const finalForceX = targetForceX + repulsionForce.x;
+            const finalForceY = targetForceY + repulsionForce.y;
+            
+            this.x += finalForceX;
+            this.y += finalForceY;
+        } else {
+            // 距离目标很近时，只应用排斥力
+            this.applyRepulsionForce(repulsionForce);
+        }
+    }
+
+    // 计算来自友军的排斥力
+    calculateRepulsionForce() {
+        let repulsionX = 0;
+        let repulsionY = 0;
+        
+        // 从全局游戏对象获取友军列表
+        const friendlyUnits = this.getFriendlyUnits();
+        
+        for (const unit of friendlyUnits) {
+            if (unit === this || !unit.alive) continue;
+            
+            const distance = Utils.distance(this.x, this.y, unit.x, unit.y);
+            const minDistance = 25; // 最小安全距离
+            
+            if (distance < minDistance && distance > 0) {
+                // 只对不同兵种施加排斥力
+                if (this.type !== unit.type) {
+                    // 计算排斥方向（从其他单位指向当前单位）
+                    const dx = this.x - unit.x;
+                    const dy = this.y - unit.y;
+                    
+                    // 排斥力强度与距离成反比，距离越近排斥力越强
+                    const repulsionStrength = (minDistance - distance) / minDistance;
+                    const maxRepulsionForce = 0.5; // 限制最大排斥力，避免过度分散
+                    
+                    const normalizedDx = dx / distance;
+                    const normalizedDy = dy / distance;
+                    
+                    repulsionX += normalizedDx * repulsionStrength * maxRepulsionForce;
+                    repulsionY += normalizedDy * repulsionStrength * maxRepulsionForce;
+                }
+            }
+        }
+        
+        return { x: repulsionX, y: repulsionY };
+    }
+
+    // 应用排斥力
+    applyRepulsionForce(repulsionForce) {
+        this.x += repulsionForce.x;
+        this.y += repulsionForce.y;
+    }
+
+    // 获取友军单位列表
+    getFriendlyUnits() {
+        if (window.game) {
+            return this.team === 'player' ? window.game.playerUnits : window.game.enemyUnits;
+        }
+        return [];
     }
 
     attack() {

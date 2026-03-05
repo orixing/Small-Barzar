@@ -270,9 +270,6 @@ class Game {
         // 根据波数确定本次刷怪数量
         const spawnCount = this.getWaveSpawnCount();
         
-        // 应用波次数值成长：每波×1.05倍数值（第1波=1.0倍，第2波=1.05倍，第3波=1.10倍...）
-        const waveMultiplier = Math.pow(1.05, this.wave - 1);
-        
         for (let i = 0; i < spawnCount; i++) {
             // 根据波数选择兵种类型
             const unitType = this.getWaveUnitType();
@@ -282,10 +279,7 @@ class Game {
                 this.canvas.height / 2 + Utils.randomInt(-30, 30)
             );
             
-            // 增强怪物血量和攻击力
-            unit.health = Math.round(unit.health * waveMultiplier);
-            unit.maxHealth = unit.health;
-            unit.attackPower = Math.round(unit.attackPower * waveMultiplier);
+            // 敌人保持基础数值，不进行成长
             
             const cost = unit.getCost();
             if (this.enemyGold >= cost) {
@@ -297,9 +291,7 @@ class Game {
             }
         }
         
-        if (spawnCount > 1) {
-            console.log(`第${this.wave}波敌人: 生产${spawnCount}个单位, 强化倍数: ${waveMultiplier.toFixed(2)}倍`);
-        }
+        console.log(`第${this.wave}波敌人: 生产${spawnCount}个单位`);
     }
 
     getWaveSpawnCount() {
