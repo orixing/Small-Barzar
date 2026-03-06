@@ -47,6 +47,9 @@ class Game {
         // 初始化背包系统
         this.inventorySystem = new InventorySystem(this);
         
+        // 给背包添加初始物品
+        this.addInitialBackpackItems();
+        
         // 初始化敌人物品系统
         this.enemyInventorySystem = new EnemyInventorySystem(this);
         
@@ -72,6 +75,64 @@ class Game {
         if (killer.team === 'player' && killer.type === 'melee') {
             this.inventorySystem.boostGladiatorAttack();
         }
+    }
+
+    addInitialBackpackItems() {
+        // 创建红色战士（品质5）
+        const warriorTemplate = this.inventorySystem.itemTemplates['warrior'];
+        if (warriorTemplate) {
+            const redWarrior = {
+                id: 'warrior',
+                template: warriorTemplate,
+                quality: 5,
+                cooldownRemaining: 0,
+                isReady: false,
+                meleeBonus: 0,
+                barbarianAdjacentBonus: 0,
+                attackBonus: 0,
+                cooldownReduction: 0,
+                healthBonus: 0,
+                assassinBonus: 0,
+                giantHealthBonus: 0,
+                swordmasterBonus: 0,
+                laboratoryBonus: 0,
+                magicCircleBonus: 0
+            };
+            
+            const actualCooldown = this.inventorySystem.getActualCooldown(redWarrior);
+            redWarrior.cooldownRemaining = actualCooldown;
+            
+            this.inventorySystem.addItemToBackpackAutoSlot(redWarrior);
+            console.log('添加红色战士到背包');
+        }
+        
+        // 创建红色徽章（品质5）
+        const badgeTemplate = this.inventorySystem.itemTemplates['badge'];
+        if (badgeTemplate) {
+            const redBadge = {
+                id: 'badge',
+                template: badgeTemplate,
+                quality: 5,
+                cooldownRemaining: -1, // 被动物品
+                isReady: false,
+                meleeBonus: 0,
+                barbarianAdjacentBonus: 0,
+                attackBonus: 0,
+                cooldownReduction: 0,
+                healthBonus: 0,
+                assassinBonus: 0,
+                giantHealthBonus: 0,
+                swordmasterBonus: 0,
+                laboratoryBonus: 0,
+                magicCircleBonus: 0
+            };
+            
+            this.inventorySystem.addItemToBackpackAutoSlot(redBadge);
+            console.log('添加红色徽章到背包');
+        }
+        
+        // 更新背包显示
+        this.inventorySystem.updateBackpackDisplay();
     }
 
     bindEvents() {
@@ -643,7 +704,17 @@ class Game {
         }
         
         // 重置双方基地血量（基于新波数）
-        const newHealth = 50 + 50 * this.wave;
+        // 新的血量分级系统：1-3波100，4-6波200，7-8波300，9-10波400
+        let newHealth;
+        if (this.wave <= 3) {
+            newHealth = 100;
+        } else if (this.wave <= 6) {
+            newHealth = 200;
+        } else if (this.wave <= 8) {
+            newHealth = 300;
+        } else {
+            newHealth = 400;
+        }
         this.playerBase.health = this.playerBase.maxHealth = newHealth;
         this.playerBase.wave = this.wave;
         this.playerBase.alive = true;  // 确保玩家基地复活

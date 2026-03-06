@@ -4099,14 +4099,14 @@ class InventorySystem {
     
     // 魔偶品质对应的相邻魔法物品攻击力加成
     getGolemAdjacentBonus(quality) {
-        // 品质等级对应的攻击力加成：蓝+40，紫+80，橙+120，红+160
+        // 品质等级对应的攻击力加成：基础+20，每升一级+20
         const bonusMap = {
-            2: 40,  // 蓝色（起始品质）
-            3: 80,  // 紫色
-            4: 120, // 橙色
-            5: 160  // 红色
+            2: 20,  // 蓝色（起始品质）
+            3: 40,  // 紫色
+            4: 60,  // 橙色
+            5: 80   // 红色
         };
-        return bonusMap[quality] || 40; // 默认加成为40（蓝色品质）
+        return bonusMap[quality] || 20; // 默认加成为20（蓝色品质）
     }
     
     // 获取学徒品质对应的每魔法物品攻击力加成
@@ -5439,8 +5439,20 @@ class InventorySystem {
         }
     }
     
-    // 应用魔法阵的额外攻击目标加成效果
+    // 应用魔法阵的额外攻击目标加成效果 - 优化版本
     applyMagicCircleBonus() {
+        // 防抖：避免频繁调用，使用延迟执行
+        if (this.magicCircleBonusTimeout) {
+            clearTimeout(this.magicCircleBonusTimeout);
+        }
+        
+        this.magicCircleBonusTimeout = setTimeout(() => {
+            this._doApplyMagicCircleBonus();
+        }, 16); // 16ms延迟，约等于1帧
+    }
+    
+    // 实际执行魔法阵加成计算
+    _doApplyMagicCircleBonus() {
         // 清除所有魔法物品的魔法阵加成
         for (let i = 0; i < this.inventory.length; i++) {
             const item = this.inventory[i];
@@ -5449,22 +5461,33 @@ class InventorySystem {
             }
         }
         
-        // 重新应用魔法阵加成
+        // 收集所有魔法阵和魔法物品
+        const circleItems = [];
+        const mageItems = [];
+        
         for (let i = 0; i < this.inventory.length; i++) {
-            const circleItem = this.inventory[i];
-            if (circleItem && circleItem !== 'occupied' && circleItem.id === 'magicCircle') {
-                const bonus = this.getMagicCircleTargetBonus(circleItem.quality);
-                
-                // 为所有魔法物品增加攻击目标
-                for (let j = 0; j < this.inventory.length; j++) {
-                    const targetItem = this.inventory[j];
-                    if (targetItem && targetItem !== 'occupied' && targetItem.template.unitType === 'mage') {
-                        targetItem.magicCircleBonus = (targetItem.magicCircleBonus || 0) + bonus;
-                    }
+            const item = this.inventory[i];
+            if (item && item !== 'occupied') {
+                if (item.id === 'magicCircle') {
+                    circleItems.push({ item, index: i });
+                } else if (item.template.unitType === 'mage') {
+                    mageItems.push(item);
                 }
-                
-                console.log(`魔法阵(位置${i})为所有魔法物品增加${bonus}个攻击目标`);
             }
+        }
+        
+        // 为每个魔法物品应用所有魔法阵的加成
+        if (circleItems.length > 0 && mageItems.length > 0) {
+            let totalBonus = 0;
+            circleItems.forEach(({item}) => {
+                totalBonus += this.getMagicCircleTargetBonus(item.quality);
+            });
+            
+            mageItems.forEach(mageItem => {
+                mageItem.magicCircleBonus = totalBonus;
+            });
+            
+            console.log(`${circleItems.length}个魔法阵为${mageItems.length}个魔法物品总计增加${totalBonus}个攻击目标`);
         }
     }
     

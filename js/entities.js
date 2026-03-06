@@ -577,42 +577,73 @@ class Unit {
         }
     }
 
-    // 多目标攻击（通用方法）
+    // 多目标攻击（通用方法）- 性能优化版本
     multiTargetAttack() {
         // 获取总攻击目标数量
         const targetCount = this.getTotalTargetCount();
         
-        // 获取可攻击的敌人单位列表（需要从游戏中获取）
+        // 如果只有1个目标，直接使用单目标攻击逻辑，避免额外计算
+        if (targetCount <= 1) {
+            this.singleTargetAttack();
+            return;
+        }
+        
+        // 获取可攻击的敌人单位列表
         const enemyUnits = this.getEnemyUnits();
+        if (!enemyUnits || enemyUnits.length === 0) {
+            return;
+        }
         
-        // 筛选攻击范围内的敌人
-        const enemiesInRange = enemyUnits.filter(enemy => {
-            if (!enemy.alive) return false;
+        // 预计算所有敌人距离，避免重复计算
+        const enemiesWithDistance = enemyUnits
+            .filter(enemy => enemy.alive)
+            .map(enemy => ({
+                enemy,
+                distance: Utils.distance(this.x, this.y, enemy.x, enemy.y)
+            }))
+            .filter(item => item.distance <= this.attackRange);
+        
+        // 按距离排序并选择最近的N个目标
+        const targets = enemiesWithDistance
+            .sort((a, b) => a.distance - b.distance)
+            .slice(0, targetCount)
+            .map(item => item.enemy);
+        
+        if (targets.length > 0) {
+            // 对每个目标造成完整伤害
+            targets.forEach((target) => {
+                const damage = this.attackPower + Utils.randomInt(-5, 5);
+                target.takeDamage(damage, this);
+            });
+            
+            // 减少console.log调用频率，只在调试时输出
+            if (Math.random() < 0.1) { // 10%概率输出，减少日志量
+                console.log(`${this.itemId}多目标攻击：攻击${targets.length}/${targetCount}个目标`);
+            }
+        }
+    }
+    
+    // 单目标攻击方法
+    singleTargetAttack() {
+        const enemyUnits = this.getEnemyUnits();
+        if (!enemyUnits || enemyUnits.length === 0) return;
+        
+        // 找到最近的敌人
+        let nearestEnemy = null;
+        let minDistance = Infinity;
+        
+        for (const enemy of enemyUnits) {
+            if (!enemy.alive) continue;
             const distance = Utils.distance(this.x, this.y, enemy.x, enemy.y);
-            return distance <= this.attackRange;
-        });
+            if (distance <= this.attackRange && distance < minDistance) {
+                minDistance = distance;
+                nearestEnemy = enemy;
+            }
+        }
         
-        // 按距离排序，选择最近的N个目标
-        const targets = enemiesInRange
-            .sort((a, b) => {
-                const distA = Utils.distance(this.x, this.y, a.x, a.y);
-                const distB = Utils.distance(this.x, this.y, b.x, b.y);
-                return distA - distB;
-            })
-            .slice(0, targetCount);
-        
-        console.log(`${this.itemId}多目标攻击：范围内${enemiesInRange.length}个敌人，攻击${targets.length}个目标`);
-        
-        // 对每个目标造成完整伤害
-        targets.forEach((target, index) => {
+        if (nearestEnemy) {
             const damage = this.attackPower + Utils.randomInt(-5, 5);
-            target.takeDamage(damage, this);
-            console.log(`${this.itemId}攻击目标${index + 1}：对${target.itemId || 'enemy'}造成${damage}伤害`);
-        });
-        
-        // 如果没有目标，攻击失效
-        if (targets.length === 0) {
-            console.log(`${this.itemId}多目标攻击：攻击范围内没有敌人`);
+            nearestEnemy.takeDamage(damage, this);
         }
     }
 
@@ -634,7 +665,15 @@ class Unit {
         // 加上魔法阵等提供的额外目标数
         const totalTargets = baseTargets + this.extraTargets;
         
-        console.log(`${this.itemId}攻击目标数: 基础${baseTargets} + 额外${this.extraTargets} = 总计${totalTargets}`);
+        // 缓存计算结果，减少重复计算
+        if (this._cachedTargetCount !== totalTargets) {
+            this._cachedTargetCount = totalTargets;
+            // 减少日志频率，只在目标数变化时输出
+            if (totalTargets > 1) {
+                console.log(`${this.itemId}攻击目标数: 基础${baseTargets} + 额外${this.extraTargets} = 总计${totalTargets}`);
+            }
+        }
+        
         return totalTargets;
     }
 
@@ -866,7 +905,18 @@ class Base {
         this.team = team;
         this.x = x;
         this.y = y;
-        this.health = this.maxHealth = 50 + 50 * wave;  // 50 + 50 × 波数
+        // 新的血量分级系统：1-3波100，4-6波200，7-8波300，9-10波400
+        let baseHealth;
+        if (wave <= 3) {
+            baseHealth = 100;
+        } else if (wave <= 6) {
+            baseHealth = 200;
+        } else if (wave <= 8) {
+            baseHealth = 300;
+        } else {
+            baseHealth = 400;
+        }
+        this.health = this.maxHealth = baseHealth;
         this.size = 50;
         this.alive = true;
         this.wave = wave;  // 记录当前波数

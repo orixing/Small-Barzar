@@ -81,6 +81,11 @@ class EnemyInventorySystem {
             return;
         }
         
+        // 药剂师特殊处理：召唤时加速相邻魔法物品
+        if (item.id === 'alchemist') {
+            this.triggerAlchemistAcceleration(itemSlot);
+        }
+        
         // 计算生产单位数量
         let unitCount = template.unitCount;
         if (item.id === 'militia' && item.militiaBonus) {
@@ -98,6 +103,8 @@ class EnemyInventorySystem {
                 // 野蛮人攻击力加成
                 if (item.id === 'barbarian') {
                     bonusAttack += (item.barbarianAdjacentBonus || 0);
+                } else if (item.id === 'golem') {
+                    bonusAttack += item.golemAdjacentBonus || 0;
                 }
                 
                 // 法杖技能：所有魔法物品都受到法杖攻击力加成
@@ -215,12 +222,13 @@ class EnemyInventorySystem {
     // 波次配置数据
     getWaveConfigs() {
         return {
-            1: { // 第1波 - 单兵作战
-                name: '单兵作战',
-                icon: '⚔️',
-                description: '入门教学波次',
+            1: { // 第1波 - 双学徒阵容
+                name: '双学徒阵容',
+                icon: '📚',
+                description: '两个学徒的基础魔法阵容',
                 layout: [
-                    {item: 'warrior', slot: 0, quality: 1}     // 战士：单一敌人
+                    {item: 'apprentice', slot: 1, quality: 1}, // 绿色学徒：第2格
+                    {item: 'apprentice', slot: 4, quality: 1}  // 绿色学徒：第5格
                 ]
             },
             2: { // 第2波 - 魔法先锋
@@ -228,27 +236,30 @@ class EnemyInventorySystem {
                 icon: '🔮',
                 description: '魔法单位的初次登场',
                 layout: [
-                    {item: 'apprentice', slot: 0, quality: 2}, // 蓝色学徒：魔法支援
-                    {item: 'waterElemental', slot: 1, quality: 2} // 蓝色水元素：快速生产
+                    {item: 'apprentice', slot: 1, quality: 1}, // 绿色学徒：第2格
+                    {item: 'staff', slot: 2, quality: 1},      // 绿色法杖：第3格
+                    {item: 'waterElemental', slot: 3, quality: 1} // 绿色水元素：第4格
                 ]
             },
             3: { // 第3波 - 魔像守卫
                 name: '魔像守卫',
                 icon: '🗿',
-                description: '魔像配合精英战士',
+                description: '魔像配合学徒和战士',
                 layout: [
-                    {item: 'golem', slot: 0, quality: 2},      // 蓝色魔偶：强力坦克单位（占2格：0,1）
-                    {item: 'warrior', slot: 2, quality: 2}     // 蓝色战士：精英单位
+                    {item: 'golem', slot: 0, quality: 2},      // 蓝色魔偶：第1-2格（占2格：0,1）
+                    {item: 'apprentice', slot: 2, quality: 2}, // 蓝色学徒：第3格
+                    {item: 'warrior', slot: 3, quality: 2}     // 蓝色战士：第4格
                 ]
             },
-            4: { // 第4波 - 野蛮军团
-                name: '野蛮军团',
-                icon: '🪓',
-                description: '野蛮人的协同作战',
+            4: { // 第4波 - 混合战团
+                name: '混合战团',
+                icon: '⚔️',
+                description: '多兵种协同作战',
                 layout: [
-                    {item: 'warrior', slot: 0, quality: 2},    // 蓝色战士
-                    {item: 'barbarian', slot: 1, quality: 3},  // 紫色野蛮人：协同核心
-                    {item: 'cavalry', slot: 2, quality: 2}     // 蓝色骑兵：快速突击
+                    {item: 'warrior', slot: 0, quality: 1},    // 绿色战士：第1格
+                    {item: 'gladiator', slot: 1, quality: 2},  // 蓝色狂战士：第2格
+                    {item: 'assassin', slot: 2, quality: 2},   // 蓝色忍者：第3格
+                    {item: 'cavalry', slot: 3, quality: 1}     // 绿色骑兵：第4格
                 ]
             },
             5: { // 第5波 - 炼金法师
@@ -256,9 +267,10 @@ class EnemyInventorySystem {
                 icon: '🧪',
                 description: '魔法与炼金的结合',
                 layout: [
-                    {item: 'apprentice', slot: 0, quality: 3}, // 紫色学徒
-                    {item: 'alchemist', slot: 1, quality: 3},  // 紫色药剂师：炼金支援
-                    {item: 'golem', slot: 2, quality: 2}       // 蓝色魔偶：协同单位（占2格：2,3）
+                    {item: 'apprentice', slot: 0, quality: 3}, // 紫色学徒：第1格
+                    {item: 'alchemist', slot: 1, quality: 3},  // 紫色药剂师：第2格
+                    {item: 'golem', slot: 2, quality: 2},      // 蓝色魔偶：第3-4格（占2格：2,3）
+                    {item: 'waterElemental', slot: 4, quality: 2} // 蓝色水元素：第5格
                 ]
             },
             6: { // 第6波 - 战旗军团
@@ -286,19 +298,18 @@ class EnemyInventorySystem {
                 description: '高等魔法研究阵容',
                 layout: [
                     {item: 'golemArcane', slot: 0, quality: 3}, // 紫色奥数魔像：核心单位（占3格：0,1,2）
-                    {item: 'staff', slot: 3, quality: 1},       // 绿色法杖：魔法加成
-                    {item: 'laboratory', slot: 4, quality: 3}   // 紫色实验室：攻击力加成（占2格：4,5）
+                    {item: 'apprentice', slot: 3, quality: 2},  // 蓝色学徒：魔法加成
+                    {item: 'laboratory', slot: 4, quality: 4}   // 橙色实验室：攻击力加成（占2格：4,5）
                 ]
             },
-            9: { // 第9波 - 传奇军团
-                name: '传奇军团',
-                icon: '⚔️',
-                description: '最强近战组合',
+            9: { // 第9波 - 巨人军团
+                name: '巨人军团',
+                icon: '💪',
+                description: '三个橙色巨人的强力阵容',
                 layout: [
-                    {item: 'titan', slot: 0, quality: 4},       // 橙色泰坦：超级坦克（占3格：0,1,2）
-                    {item: 'warrior', slot: 3, quality: 3},     // 紫色战士：精英单位
-                    {item: 'badge', slot: 4, quality: 5},       // 红色徽章：减少冷却时间
-                    {item: 'swordmaster', slot: 5, quality: 4}  // 橙色武士：精英近战
+                    {item: 'giant', slot: 0, quality: 4},       // 橙色巨人：坦克（占2格：0,1）
+                    {item: 'giant', slot: 2, quality: 4},       // 橙色巨人：坦克（占2格：2,3）
+                    {item: 'giant', slot: 4, quality: 4}        // 橙色巨人：坦克（占2格：4,5）
                 ]
             },
             10: { // 第10波 - 终极法师
@@ -373,6 +384,7 @@ class EnemyInventorySystem {
         const template = this.itemTemplates[itemId];
         if (!template) {
             console.error(`物品模板不存在: ${itemId}`);
+            console.error('可用的模板列表:', Object.keys(this.itemTemplates));
             return null;
         }
         
@@ -386,6 +398,8 @@ class EnemyInventorySystem {
             attackBonus: 0,
             cooldownReduction: 0,
             barbarianAdjacentBonus: 0,
+            golemAdjacentBonus: 0, // 魔偶相邻加成
+            accelerationTime: 0, // 加速时间
             // 其他属性按需添加...
         };
         
@@ -410,6 +424,9 @@ class EnemyInventorySystem {
         
         // 应用法杖效果（复用玩家逻辑）
         this.applyStaffBonus();
+        
+        // 应用魔偶相邻加成效果（复用玩家逻辑）
+        this.applyGolemAdjacentBonus();
         
         console.log('敌人协同效果应用完成');
     }
@@ -521,30 +538,173 @@ class EnemyInventorySystem {
         }
     }
     
+    // 应用魔偶的相邻魔法物品攻击力加成效果（复用玩家逻辑）
+    applyGolemAdjacentBonus() {
+        // 清除所有魔偶的相邻加成
+        for (let i = 0; i < this.inventory.length; i++) {
+            const item = this.inventory[i];
+            if (item && item !== 'occupied' && item.golemAdjacentBonus) {
+                item.golemAdjacentBonus = 0;
+            }
+        }
+        
+        // 重新应用魔偶相邻加成
+        for (let i = 0; i < this.inventory.length; i++) {
+            const golemItem = this.inventory[i];
+            if (golemItem && golemItem !== 'occupied' && golemItem.id === 'golem') {
+                // 检查相邻位置是否有魔法物品
+                const hasAdjacentMage = this.hasAdjacentMageUnit(i);
+                if (hasAdjacentMage) {
+                    const bonus = this.game.inventorySystem.getGolemAdjacentBonus(golemItem.quality);
+                    golemItem.golemAdjacentBonus = bonus;
+                    console.log(`敌人魔偶(位置${i})检测到相邻魔法物品，获得攻击力加成 +${bonus}`);
+                } else {
+                    console.log(`敌人魔偶(位置${i})没有相邻的魔法物品，无加成`);
+                }
+            }
+        }
+        
+        // 更新显示
+        this.updateEnemyInventoryDisplay();
+    }
+    
+    // 药剂师特殊能力：召唤时加速相邻魔法物品1秒（镜像玩家逻辑）
+    triggerAlchemistAcceleration(alchemistSlot) {
+        const accelerationTime = 60; // 1秒 = 60帧
+        
+        console.log(`敌人药剂师(位置${alchemistSlot})触发加速技能，开始检查相邻位置`);
+        
+        // 使用通用相邻查找函数，过滤魔法物品
+        const adjacentMageItems = this.findAdjacentItems(
+            alchemistSlot, 
+            1, // 药剂师是小尺寸物品
+            (item) => item.template.unitType === 'mage' // 过滤魔法物品
+        );
+        
+        let acceleratedCount = 0;
+        
+        for (const adjacent of adjacentMageItems) {
+            const { item: targetItem, position } = adjacent;
+            
+            // 累加加速时间
+            const oldAcceleration = targetItem.accelerationTime || 0;
+            this.addAccelerationTime(targetItem, accelerationTime);
+            acceleratedCount++;
+            
+            console.log(`✓ 敌人药剂师为${position}侧魔法物品(${targetItem.template.name})提供1秒加速，加速时间: ${oldAcceleration} -> ${targetItem.accelerationTime}`);
+        }
+        
+        if (acceleratedCount > 0) {
+            console.log(`✓ 敌人药剂师效果触发！${acceleratedCount}个相邻魔法物品获得1秒加速`);
+        } else {
+            console.log('✗ 敌人药剂师召唤，但没有相邻的魔法物品');
+        }
+        
+        // 更新显示
+        this.updateEnemyInventoryDisplay();
+    }
+    
+    // 统一的加速处理函数
+    addAccelerationTime(item, accelerationTime) {
+        const oldTime = item.accelerationTime || 0;
+        item.accelerationTime = oldTime + accelerationTime;
+        return item.accelerationTime;
+    }
+    
+    // 检查指定位置是否有相邻的魔法物品（复用玩家逻辑）
+    hasAdjacentMageUnit(slotIndex) {
+        const item = this.inventory[slotIndex];
+        if (!item || item === 'occupied') return false;
+        
+        // 使用通用相邻查找函数，过滤魔法物品（包括召唤和非召唤的魔法物品）
+        const adjacentMageItems = this.findAdjacentItems(
+            slotIndex, 
+            item.template.size, // 考虑物品尺寸
+            (targetItem) => targetItem.template.unitType === 'mage' // 移除unitCount限制，支持所有魔法物品
+        );
+        
+        if (adjacentMageItems.length > 0) {
+            for (const adjacent of adjacentMageItems) {
+                console.log(`敌人魔偶(位置${slotIndex})${adjacent.position}侧发现魔法物品: ${adjacent.item.id}`);
+            }
+            return true;
+        } else {
+            console.log(`敌人魔偶(位置${slotIndex})未发现相邻魔法物品`);
+            return false;
+        }
+    }
+    
+    // 查找相邻物品（复用玩家逻辑）
+    findAdjacentItems(slotIndex, itemSize, filterFunction) {
+        const adjacentItems = [];
+        
+        // 检查左侧相邻位置
+        const leftSlot = slotIndex - 1;
+        if (leftSlot >= 0) {
+            const leftItem = this.inventory[leftSlot];
+            if (leftItem && leftItem !== 'occupied' && filterFunction(leftItem)) {
+                adjacentItems.push({
+                    item: leftItem,
+                    slot: leftSlot,
+                    position: 'left'
+                });
+            }
+        }
+        
+        // 检查右侧相邻位置（考虑物品尺寸）
+        const rightSlot = slotIndex + itemSize;
+        if (rightSlot < this.inventory.length) {
+            const rightItem = this.inventory[rightSlot];
+            if (rightItem && rightItem !== 'occupied' && filterFunction(rightItem)) {
+                adjacentItems.push({
+                    item: rightItem,
+                    slot: rightSlot,
+                    position: 'right'
+                });
+            }
+        }
+        
+        return adjacentItems;
+    }
+    
     // === UI显示相关函数 ===
     
     // 更新敌人战斗区显示
     updateEnemyInventoryDisplay() {
-        const slots = document.querySelectorAll('.enemy-inventory-section .inventory-slot');
-        
-        slots.forEach((slot, index) => {
-            const item = this.inventory[index];
+        try {
+            console.log('开始更新敌人战斗区UI...');
+            const slots = document.querySelectorAll('.enemy-inventory-section .inventory-slot');
             
-            // 清空插槽
-            slot.innerHTML = '';
-            slot.removeAttribute('data-item-id');
-            slot.removeAttribute('data-quality');
-            slot.classList.remove('occupied', 'occupied-by-large-item');
-            
-            if (item && item !== 'occupied') {
-                this.createEnemyItemElement(slot, item, index);
-                slot.classList.add('occupied');
-            } else if (item === 'occupied') {
-                slot.classList.add('occupied-by-large-item');
+            if (slots.length === 0) {
+                console.error('未找到敌人战斗区插槽元素！');
+                return;
             }
-        });
-        
-        console.log('敌人战斗区UI更新完成');
+            
+            console.log(`找到${slots.length}个敌人插槽，当前装备:`, this.inventory);
+            
+            slots.forEach((slot, index) => {
+                const item = this.inventory[index];
+                
+                // 清空插槽
+                slot.innerHTML = '';
+                slot.removeAttribute('data-item-id');
+                slot.removeAttribute('data-quality');
+                slot.classList.remove('occupied', 'occupied-by-large-item');
+                
+                if (item && item !== 'occupied') {
+                    console.log(`为位置${index}创建物品元素: ${item.id}`);
+                    this.createEnemyItemElement(slot, item, index);
+                    slot.classList.add('occupied');
+                } else if (item === 'occupied') {
+                    slot.classList.add('occupied-by-large-item');
+                }
+            });
+            
+            console.log('敌人战斗区UI更新完成');
+        } catch (error) {
+            console.error('敌人战斗区UI更新失败:', error);
+            console.error('错误堆栈:', error.stack);
+        }
     }
     
     // 创建敌人物品UI元素
@@ -781,11 +941,6 @@ class EnemyInventorySystem {
             document.getElementById('skill-description').innerHTML = 
                 `击杀敌人后攻击力+2`;
             document.getElementById('skill-status').textContent = '';
-        } else if (item.id === 'swordmaster') {
-            skillSection.classList.remove('hidden');
-            document.getElementById('skill-description').innerHTML = 
-                `击杀敌人后攻击力+5`;
-            document.getElementById('skill-status').textContent = '';
         } else if (item.id === 'titan') {
             skillSection.classList.remove('hidden');
             document.getElementById('skill-description').innerHTML = 
@@ -815,7 +970,7 @@ class EnemyInventorySystem {
         } else if (item.id === 'laboratory') {
             skillSection.classList.remove('hidden');
             document.getElementById('skill-description').innerHTML = 
-                `给相邻药剂师提供额外效果`;
+                `每有一个魔法物品，给所有物品+6攻击力`;
             document.getElementById('skill-status').textContent = '';
         } else if (item.id === 'alchemyLab') {
             skillSection.classList.remove('hidden');
@@ -830,7 +985,7 @@ class EnemyInventorySystem {
         } else if (item.id === 'golemArcane') {
             skillSection.classList.remove('hidden');
             document.getElementById('skill-description').innerHTML = 
-                `死亡时给相邻魔像永久攻击力+3`;
+                `如果有相邻的魔法物品，获得400护盾`;
             document.getElementById('skill-status').textContent = '';
         } else if (item.id === 'archmage') {
             skillSection.classList.remove('hidden');
